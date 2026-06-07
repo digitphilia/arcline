@@ -1,0 +1,6 @@
+name: toy_3node
+description: Minimal Supplier -> Plant -> Customer demo
+arclineSchemaVersion: "1.0.0"
+defaultBackend: networkx
+createdAt: "2025-01-01T00:00:00+00:00"
+updatedAt: "2025-01-01T00:00:00+00:00"

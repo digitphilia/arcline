@@ -18,3 +18,16 @@ a global distribution network, or embedding a recurring optimization into a dail
 layer that makes the network the first-class object - and the math, the I/O, and the solver plumbing fade into the background.
 
 </div>
+
+
+## Quickstart
+
+```bash
+pip install -e .[dashboard,dev]
+
+arcline init ./my_network --name "My First Network"
+arcline validate ./my_network
+arcline dashboard ./my_network
+```
+
+Open http://127.0.0.1:8050 in a browser.

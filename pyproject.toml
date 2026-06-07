@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "arcline"
 dynamic = ["version"]
-description = "A Python Framework for Supply Chain Network Optimizer"
+description = "A Python Framework for Supply Chain Network Optimization"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.12"
 license = {file = "LICENSE"}
@@ -17,11 +17,12 @@ authors = [
 ]
 
 keywords = [
-    "supply chain", "network optimization", "share of business"
+    "supply chain", "network optimization", "share of business",
+    "facility location", "min-cost flow"
 ]
 
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -33,7 +34,38 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-dependencies = []
+dependencies = [
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "networkx>=3.2",
+    "pandas>=2.2",
+    "pyarrow>=15.0",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+    "structlog>=24.1",
+]
+
+[project.optional-dependencies]
+dashboard = [
+    "dash>=2.17",
+    "dash-bootstrap-components>=1.6",
+    "dash-ag-grid>=31.0",
+    "plotly>=5.20",
+    "flask-caching>=2.1",
+]
+igraph = [
+    "python-igraph>=0.11",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "dash[testing]>=2.17",
+]
+
+[project.scripts]
+arcline = "arcline.cli.main:app"
 
 [project.urls]
 Homepage = "https://github.com/growthio/arcline"
@@ -45,3 +77,22 @@ exclude = ["tests*", "examples*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "arcline.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+markers = [
+    "dashboard: tests requiring the dashboard extras (dash/plotly)",
+    "slow: long-running tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E203", "E501"]
