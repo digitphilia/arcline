@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from dash import Dash, Input, Output, State, ctx, no_update
 
 from arcline.dashboard.callbacks.nodes_cb import (
-    __coerce_payload__, __walk_values__,
+    coerce_payload, walk_values,
 )
 from arcline.dashboard.components import make_edge_form
 from arcline.dashboard.state import session
@@ -148,7 +148,7 @@ def register(app : Dash) -> None:
 
         cls = resolve_edge(kind)
         harvested : Dict[str, Any] = {}
-        __walk_values__(form_children, "edge-form-", harvested)
+        walk_values(form_children, "edge-form-", harvested)
 
         src_key = harvested.pop("srcKey", None)
         dst_key = harvested.pop("dstKey", None)
@@ -164,7 +164,7 @@ def register(app : Dash) -> None:
                 no_update,
             )
 
-        payload = __coerce_payload__(cls, harvested)
+        payload = coerce_payload(cls, harvested)
         try:
             instance = cls(
                 srcNode = src_node, dstNode = dst_node, **payload

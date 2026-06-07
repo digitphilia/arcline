@@ -27,7 +27,7 @@ from arcline.io.readers import (
     from_parquet,
     from_yaml,
 )
-from arcline.io.writers import to_json, to_parquet, to_yaml
+from arcline.io.writers import to_json, to_json_records, to_parquet, to_yaml
 from arcline.io.project import Project
 
 __all__ = [
@@ -37,6 +37,7 @@ __all__ = [
     "from_parquet",
     "from_csv",
     "to_json",
+    "to_json_records",
     "to_yaml",
     "to_parquet",
     "validate_project",

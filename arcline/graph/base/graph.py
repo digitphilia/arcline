@@ -220,7 +220,7 @@ class AbstractGraph(ABC):
 
         return {
             edge.hashKey : {
-                (edge.srcNode.hashKey, edge.srcNode.hashKey) : edge
+                (edge.srcNode.hashKey, edge.dstNode.hashKey) : edge
             }
             for edge in self.edges
         }

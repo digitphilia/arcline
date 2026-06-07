@@ -24,7 +24,11 @@ import yaml
 
 from arcline.graph.base.edges import AbstractEdge
 from arcline.graph.base.nodes import AbstractNode
-from arcline.graph.registry import resolve_edge, resolve_node
+from arcline.graph.registry import (
+    ArclineRegistryError,
+    resolve_edge,
+    resolve_node,
+)
 
 
 _REQUIRED_NODE_FIELDS : Tuple[str, ...] = ("kind", "name", "hashKey")
@@ -108,7 +112,12 @@ def __build_node__(record : Dict[str, Any]) -> AbstractNode:
     __require_fields__(record, _REQUIRED_NODE_FIELDS, "Node")
     payload = dict(record)
     kind = payload.pop("kind")
-    cls = resolve_node(kind)
+    try:
+        cls = resolve_node(kind)
+    except ArclineRegistryError as exc:
+        raise ValueError(
+            f"Unknown node kind {kind!r}: {exc}"
+        ) from exc
     return cls(**payload)
 
 
@@ -151,7 +160,12 @@ def __build_edge__(
             f"Edge references unknown dstKey {dst_key!r}."
         )
 
-    cls = resolve_edge(kind)
+    try:
+        cls = resolve_edge(kind)
+    except ArclineRegistryError as exc:
+        raise ValueError(
+            f"Unknown edge kind {kind!r}: {exc}"
+        ) from exc
     return cls(
         srcNode = nodes_by_key[src_key],
         dstNode = nodes_by_key[dst_key],

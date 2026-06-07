@@ -131,3 +131,56 @@ def test_remove_edge_mutator(sample_graph) -> None:
     sample_graph.removeEdge(edge)
 
     assert sample_graph.numEdges == before - 1
+
+
+def test_graph_edges_by_key_uses_dst() -> None:
+    """Regression: ``_edgesByKey`` keyed by (src, dst), not (src, src)."""
+
+    builder = NetworkBuilder()
+    src = builder.add(Supplier(name = "S1", hashKey = "N-S1"))
+    dst = builder.add(Plant(name = "P1", hashKey = "N-P1"))
+    edge = builder.connect(
+        src, dst, name = "S1->P1", hashKey = "E-S1P1",
+        distanceKm = 1.0, costPerUnit = 1.0,
+        transitDays = 1.0, mode = "road",
+    )
+    graph = builder.build()
+
+    bucket = graph._edgesByKey[edge.hashKey]
+    assert ("N-S1", "N-P1") in bucket
+    assert ("N-S1", "N-S1") not in bucket
+
+
+def test_update_node_hashkey_rejected(sample_graph) -> None:
+    """Regression: changing hashKey via updateNode must raise."""
+
+    target = next(
+        node for node in sample_graph.nodes
+        if node.hashKey == "N-S1"
+    )
+
+    with pytest.raises(ValueError, match = "immutable"):
+        sample_graph.updateNode(target, hashKey = "N-OTHER")
+
+
+def test_update_edge_hashkey_rejected(sample_graph) -> None:
+    """Regression: changing hashKey via updateEdge must raise."""
+
+    edge = sample_graph.edges[0]
+
+    with pytest.raises(ValueError, match = "immutable"):
+        sample_graph.updateEdge(edge, hashKey = "E-OTHER")
+
+
+def test_update_node_keeps_graph_in_sync(sample_graph) -> None:
+    """After updateNode, NetworkX vertex set must match the node list."""
+
+    target = next(
+        node for node in sample_graph.nodes
+        if node.hashKey == "N-S1"
+    )
+    sample_graph.updateNode(target, leadTimeDays = 99.0)
+
+    assert set(sample_graph.G.nodes) == {
+        n.hashKey for n in sample_graph.nodes
+    }

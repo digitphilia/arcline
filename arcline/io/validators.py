@@ -115,7 +115,8 @@ def validate_project(
       * duplicate ``hashKey`` within nodes (error)
       * duplicate ``hashKey`` within edges (error)
       * edge ``srcKey`` / ``dstKey`` not in node hashKeys (error)
-      * node / edge ``kind`` not in the type registry (warning)
+      * node / edge ``kind`` not in the type registry (error)
+      * self-loop edges where ``srcKey == dstKey`` (warning)
       * manifest missing required keys (error)
       * manifest ``arclineSchemaVersion`` mismatch (warning)
       * node ``latitude`` / ``longitude`` out of range (error)
@@ -175,6 +176,21 @@ def validate_project(
                 location = f"edges[{idx}].dstKey",
             ))
 
+        if (
+            isinstance(src, str) and isinstance(dst, str)
+            and src == dst
+        ):
+            issues.append(ValidationIssue(
+                severity = "warning",
+                code = "self-loop-edge",
+                message = (
+                    f"Edge at index {idx} is a self-loop "
+                    f"(srcKey == dstKey == {src!r}); supported but "
+                    f"unusual for supply-chain lanes."
+                ),
+                location = f"edges[{idx}]",
+            ))
+
     known_node_kinds = { kind for kind, _ in iter_nodes() }
     known_edge_kinds = { kind for kind, _ in iter_edges() }
 
@@ -182,7 +198,7 @@ def validate_project(
         kind = rec.get("kind")
         if isinstance(kind, str) and kind not in known_node_kinds:
             issues.append(ValidationIssue(
-                severity = "warning",
+                severity = "error",
                 code = "unknown-node-kind",
                 message = (
                     f"Node kind {kind!r} is not registered; "
@@ -219,7 +235,7 @@ def validate_project(
         kind = rec.get("kind")
         if isinstance(kind, str) and kind not in known_edge_kinds:
             issues.append(ValidationIssue(
-                severity = "warning",
+                severity = "error",
                 code = "unknown-edge-kind",
                 message = (
                     f"Edge kind {kind!r} is not registered; "

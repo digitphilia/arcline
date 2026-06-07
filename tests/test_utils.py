@@ -72,3 +72,20 @@ def test_credentials_redactor_scrubs_dsn() -> None:
     assert redactor.filter(record) is True
     assert "***" in record.getMessage()
     assert "user:pass@host" not in record.getMessage()
+
+
+def test_credentials_redactor_attached_to_handler(capsys) -> None:
+    """Regression: redactor must scrub logs from CHILD loggers too."""
+
+    __reset_for_tests__()
+    configure_logging()
+
+    child = logging.getLogger("arcline.x")
+    child.warning("opening mssql+pyodbc://u:p@host/db now")
+
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+
+    captured = capsys.readouterr()
+    assert "***" in captured.err
+    assert "u:p@host" not in captured.err

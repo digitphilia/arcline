@@ -20,7 +20,7 @@ from arcline.dashboard.state.store import STORE_GRAPH_DIRTY
 from arcline.graph.registry import resolve_node
 
 
-def __walk_values__(
+def walk_values(
         node : Any, prefix : str, sink : Dict[str, Any]
 ) -> None:
     """
@@ -52,14 +52,14 @@ def __walk_values__(
         for child_key in ("children",):
             child = props.get(child_key)
             if child is not None:
-                __walk_values__(child, prefix, sink)
+                walk_values(child, prefix, sink)
 
     elif isinstance(node, list):
         for item in node:
-            __walk_values__(item, prefix, sink)
+            walk_values(item, prefix, sink)
 
 
-def __coerce_payload__(
+def coerce_payload(
         cls : type, payload : Dict[str, Any]
 ) -> Dict[str, Any]:
     """
@@ -187,8 +187,8 @@ def register(app : Dash) -> None:
 
         cls = resolve_node(kind)
         harvested : Dict[str, Any] = {}
-        __walk_values__(form_children, "node-form-", harvested)
-        payload = __coerce_payload__(cls, harvested)
+        walk_values(form_children, "node-form-", harvested)
+        payload = coerce_payload(cls, harvested)
 
         try:
             instance = cls(**payload)

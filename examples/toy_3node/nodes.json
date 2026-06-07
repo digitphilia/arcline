@@ -1,33 +1,30 @@
-{
-  "nodes": [
-    {
-      "kind": "supplier",
-      "name": "Acme Supply Co",
-      "hashKey": "N-S-ACME",
-      "latitude": 12.9716,
-      "longitude": 77.5946,
-      "leadTimeDays": 3.0,
-      "reliabilityScore": 0.95
-    },
-    {
-      "kind": "plant",
-      "name": "Main Plant",
-      "hashKey": "N-P-MAIN",
-      "latitude": 13.0827,
-      "longitude": 80.2707,
-      "productionRatePerHr": 250.0,
-      "minCapacity": 0.0,
-      "maxCapacity": 5000.0
-    },
-    {
-      "kind": "customer",
-      "name": "Retail Customer",
-      "hashKey": "N-C-RETAIL",
-      "latitude": 17.3850,
-      "longitude": 78.4867,
-      "demandMean": 120.0,
-      "demandStd": 25.0
-    }
-  ],
-  "edges": []
-}
+[
+  {
+    "kind": "supplier",
+    "name": "Acme Supply Co",
+    "hashKey": "N-S-ACME",
+    "latitude": 12.9716,
+    "longitude": 77.5946,
+    "leadTimeDays": 3.0,
+    "reliabilityScore": 0.95
+  },
+  {
+    "kind": "plant",
+    "name": "Main Plant",
+    "hashKey": "N-P-MAIN",
+    "latitude": 13.0827,
+    "longitude": 80.2707,
+    "productionRatePerHr": 250.0,
+    "minCapacity": 0.0,
+    "maxCapacity": 5000.0
+  },
+  {
+    "kind": "customer",
+    "name": "Retail Customer",
+    "hashKey": "N-C-RETAIL",
+    "latitude": 17.3850,
+    "longitude": 78.4867,
+    "demandMean": 120.0,
+    "demandStd": 25.0
+  }
+]

@@ -36,10 +36,15 @@ from arcline.graph.backends.networkx import NetworkXGraph
 from arcline.graph.base.edges import AbstractEdge
 from arcline.graph.base.graph import AbstractGraph
 from arcline.graph.base.nodes import AbstractNode
-from arcline.io.readers import from_json
+from arcline.io.readers import __build_edge__, __build_node__
 from arcline.io.schema import MANIFEST_SCHEMA_VERSION
 from arcline.io.validators import ValidationIssue, validate_project
-from arcline.io.writers import __build_payload__, to_json
+from arcline.io.writers import (
+    _build_payload,
+    __edge_record__,
+    __node_record__,
+    to_json_records,
+)
 
 
 _GITIGNORE_BODY : str = (
@@ -47,6 +52,100 @@ _GITIGNORE_BODY : str = (
     ".cache/\n"
     "exports/\n"
 )
+
+
+def __extract_records__(
+        payload : Any, key : str, file_path : Path
+) -> List[Dict[str, Any]]:
+    """
+    Normalise the parsed JSON payload of a ``nodes.json`` or
+    ``edges.json`` file into a flat list of record dictionaries.
+
+    Both the canonical flat-list form (``[{...}, {...}]``) and the
+    legacy envelope form (``{"nodes": [...], "edges": [...]}``) are
+    accepted. A ``None`` value for the requested key is coerced to
+    an empty list rather than propagating into downstream iteration.
+
+    :type  payload: Any
+    :param payload: Parsed JSON payload as returned by
+        :func:`json.load`.
+
+    :type  key: str
+    :param key: Envelope key to extract when ``payload`` is a dict
+        (``"nodes"`` or ``"edges"``).
+
+    :type  file_path: Path
+    :param file_path: Source file path; included in error messages.
+
+    :raises ValueError: If ``payload`` is neither a list nor a dict
+        with the requested key, or if the extracted value is not a
+        list.
+
+    :rtype:   List[Dict[str, Any]]
+    :returns: Flat list of record dictionaries, possibly empty.
+    """
+
+    if isinstance(payload, list):
+        return payload
+
+    if isinstance(payload, dict):
+        if key not in payload:
+            return []
+        records = payload.get(key)
+        if records is None:
+            raise ValueError(
+                f"Field {key!r} in {file_path} is explicitly null; "
+                f"use an empty array [] instead."
+            )
+        if not isinstance(records, list):
+            raise ValueError(
+                f"Expected {key!r} to be a JSON array in "
+                f"{file_path}, got {type(records).__name__}."
+            )
+        return records
+
+    raise ValueError(
+        f"Unsupported JSON payload shape in {file_path}: expected "
+        f"a list or an envelope dict with {key!r} key, got "
+        f"{type(payload).__name__}."
+    )
+
+
+def __assemble_records__(
+        raw_nodes : List[Dict[str, Any]],
+        raw_edges : List[Dict[str, Any]]
+) -> tuple:
+    """
+    Deserialise raw record dictionaries into pydantic-validated
+    :class:`AbstractNode` and :class:`AbstractEdge` instances using
+    the registry-driven helpers in :mod:`arcline.io.readers`.
+
+    :type  raw_nodes: List[Dict[str, Any]]
+    :param raw_nodes: Raw node dictionaries.
+
+    :type  raw_edges: List[Dict[str, Any]]
+    :param raw_edges: Raw edge dictionaries.
+
+    :raises KeyError: If a record is missing required fields or
+        references an unknown ``hashKey`` endpoint.
+    :raises ValueError: If a record's ``kind`` discriminator is not
+        registered.
+
+    :rtype:   tuple
+    :returns: ``(nodes, edges)`` lists of validated instances.
+    """
+
+    nodes : List[AbstractNode] = [
+        __build_node__(rec) for rec in raw_nodes
+    ]
+    nodes_by_key : Dict[str, AbstractNode] = {
+        node.hashKey : node for node in nodes
+    }
+    edges : List[AbstractEdge] = [
+        __build_edge__(rec, nodes_by_key) for rec in raw_edges
+    ]
+
+    return nodes, edges
 
 
 class Project:
@@ -190,8 +289,8 @@ class Project:
                 sort_keys = False, default_flow_style = False,
             )
 
-        to_json(nodes = [], edges = [], path = root / "nodes.json")
-        to_json(nodes = [], edges = [], path = root / "edges.json")
+        to_json_records([], root / "nodes.json")
+        to_json_records([], root / "edges.json")
 
         return cls(
             path = root,
@@ -247,15 +346,11 @@ class Project:
         with edges_path.open("r", encoding = "utf-8") as fp:
             edges_payload = json.load(fp)
 
-        raw_nodes = (
-            nodes_payload.get("nodes", [])
-            if isinstance(nodes_payload, dict)
-            else nodes_payload
+        raw_nodes = __extract_records__(
+            nodes_payload, "nodes", nodes_path,
         )
-        raw_edges = (
-            edges_payload.get("edges", [])
-            if isinstance(edges_payload, dict)
-            else edges_payload
+        raw_edges = __extract_records__(
+            edges_payload, "edges", edges_path,
         )
 
         issues = validate_project(
@@ -270,8 +365,13 @@ class Project:
                 f"Project at {root} failed validation: {messages}"
             )
 
-        nodes, _ = from_json(nodes_path)
-        _, edges = from_json(edges_path)
+        try:
+            nodes, edges = __assemble_records__(raw_nodes, raw_edges)
+        except (KeyError, ValueError) as exc:
+            raise ValueError(
+                f"Project at {root} failed to deserialise records "
+                f"(nodes: {nodes_path}, edges: {edges_path}): {exc}"
+            ) from exc
 
         return cls(
             path = root,
@@ -355,14 +455,11 @@ class Project:
                 sort_keys = False, default_flow_style = False,
             )
 
-        to_json(
-            nodes = self.nodes, edges = self.edges,
-            path = self.path / "nodes.json",
-        )
-        to_json(
-            nodes = self.nodes, edges = self.edges,
-            path = self.path / "edges.json",
-        )
+        node_records = [__node_record__(node) for node in self.nodes]
+        edge_records = [__edge_record__(edge) for edge in self.edges]
+
+        to_json_records(node_records, self.path / "nodes.json")
+        to_json_records(edge_records, self.path / "edges.json")
 
 
     def toGraph(self, backend : str = "networkx") -> AbstractGraph:
@@ -400,7 +497,7 @@ class Project:
         """
 
         buffer = _io.StringIO()
-        payload = __build_payload__(self.nodes, self.edges)
+        payload = _build_payload(self.nodes, self.edges)
         json.dump(payload, buffer, default = str)
         buffer.seek(0)
         reloaded = json.loads(buffer.getvalue())

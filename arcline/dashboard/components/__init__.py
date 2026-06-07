@@ -17,7 +17,7 @@ from arcline.dashboard.components.data_table import (
 from arcline.dashboard.components.edge_form import make_edge_form
 from arcline.dashboard.components.kpi_cards import make_kpi_strip
 from arcline.dashboard.components.navbar import make_navbar
-from arcline.dashboard.components.node_form import make_node_form
+from arcline.dashboard.components.node_form import infer_input, make_node_form
 
 __all__ = [
     "make_navbar",
@@ -26,4 +26,5 @@ __all__ = [
     "make_node_table",
     "make_edge_table",
     "make_kpi_strip",
+    "infer_input",
 ]

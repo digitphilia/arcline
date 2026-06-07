@@ -63,13 +63,13 @@ def __edge_record__(edge : AbstractEdge) -> Dict[str, Any]:
     return record
 
 
-def __build_payload__(
+def _build_payload(
         nodes : List[AbstractNode],
         edges : List[AbstractEdge]
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
-    Assemble the canonical single-file payload envelope used by JSON
-    and YAML writers.
+    Assemble the canonical single-file payload envelope used by the
+    YAML writer and by in-memory revalidation flows.
 
     :type  nodes: List[AbstractNode]
     :param nodes: The nodes to serialise.
@@ -87,6 +87,40 @@ def __build_payload__(
     }
 
 
+def to_json_records(
+        records : List[Dict[str, Any]],
+        path : Path,
+        indent : int = 2
+) -> None:
+    """
+    Write a flat list of pre-serialised record dictionaries to ``path``
+    as a top-level JSON array.
+
+    This is the canonical writer for ``nodes.json`` and ``edges.json``;
+    each file contains only its own records (no ``{"nodes": ...,
+    "edges": ...}`` envelope wrapper).
+
+    :type  records: List[Dict[str, Any]]
+    :param records: Flat list of records to serialise.
+
+    :type  path: Path
+    :param path: Output filesystem path; parent directories must
+        already exist.
+
+    :type  indent: int
+    :param indent: JSON indentation level; pass ``0`` for a compact
+        single-line output.
+
+    :rtype:   None
+    """
+
+    with Path(path).open("w", encoding = "utf-8") as fp:
+        json.dump(
+            records, fp, indent = indent or None,
+            ensure_ascii = False, default = str,
+        )
+
+
 def to_json(
         nodes : List[AbstractNode],
         edges : List[AbstractEdge],
@@ -94,7 +128,14 @@ def to_json(
         indent : int = 2
 ) -> None:
     """
-    Write a single-file JSON project payload to ``path``.
+    Write a legacy single-file JSON project payload (envelope form
+    ``{"nodes": [...], "edges": [...]}``) to ``path``.
+
+    .. deprecated:: 0.0.1
+        Prefer :func:`to_json_records` for per-artifact writes. This
+        helper is retained for backward compatibility with the
+        envelope-form ``nodes.json`` / ``edges.json`` files produced
+        by earlier releases.
 
     :type  nodes: List[AbstractNode]
     :param nodes: Nodes to serialise.
@@ -113,7 +154,7 @@ def to_json(
     :rtype:   None
     """
 
-    payload = __build_payload__(nodes, edges)
+    payload = _build_payload(nodes, edges)
 
     with Path(path).open("w", encoding = "utf-8") as fp:
         json.dump(
@@ -142,7 +183,7 @@ def to_yaml(
     :rtype:   None
     """
 
-    payload = __build_payload__(nodes, edges)
+    payload = _build_payload(nodes, edges)
 
     with Path(path).open("w", encoding = "utf-8") as fp:
         yaml.safe_dump(

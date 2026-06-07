@@ -129,12 +129,13 @@ def configure_logging(level : str = "INFO", json : bool = False) -> None:
     root.setLevel(getattr(logging, effective, logging.INFO))
 
     handler = logging.StreamHandler()
+    handler.addFilter(CredentialsRedactor())
     if json:
         handler.setFormatter(JsonFormatter())
     else:
         handler.setFormatter(logging.Formatter(DEFAULT_FORMAT))
 
-    root.addFilter(CredentialsRedactor())
+    root.handlers.clear()
     root.addHandler(handler)
 
     _CONFIGURED = True

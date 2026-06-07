@@ -1,27 +1,24 @@
-{
-  "nodes": [],
-  "edges": [
-    {
-      "kind": "lane",
-      "name": "Acme -> Main",
-      "hashKey": "E-L-ACME-MAIN",
-      "srcKey": "N-S-ACME",
-      "dstKey": "N-P-MAIN",
-      "distanceKm": 285.0,
-      "costPerUnit": 4.50,
-      "transitDays": 2.0,
-      "mode": "road"
-    },
-    {
-      "kind": "lane",
-      "name": "Main -> Retail",
-      "hashKey": "E-L-MAIN-RETAIL",
-      "srcKey": "N-P-MAIN",
-      "dstKey": "N-C-RETAIL",
-      "distanceKm": 510.0,
-      "costPerUnit": 3.75,
-      "transitDays": 3.0,
-      "mode": "road"
-    }
-  ]
-}
+[
+  {
+    "kind": "lane",
+    "name": "Acme -> Main",
+    "hashKey": "E-L-ACME-MAIN",
+    "srcKey": "N-S-ACME",
+    "dstKey": "N-P-MAIN",
+    "distanceKm": 285.0,
+    "costPerUnit": 4.50,
+    "transitDays": 2.0,
+    "mode": "road"
+  },
+  {
+    "kind": "lane",
+    "name": "Main -> Retail",
+    "hashKey": "E-L-MAIN-RETAIL",
+    "srcKey": "N-P-MAIN",
+    "dstKey": "N-C-RETAIL",
+    "distanceKm": 510.0,
+    "costPerUnit": 3.75,
+    "transitDays": 3.0,
+    "mode": "road"
+  }
+]

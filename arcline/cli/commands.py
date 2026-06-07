@@ -44,7 +44,15 @@ def init(
     :rtype:   None
     """
 
-    Project.init(path, name = name)
+    try:
+        Project.init(path, name = name)
+    except FileExistsError as exc:
+        typer.secho(
+            f"Project already initialised at {path}: {exc}",
+            fg = typer.colors.RED, err = True,
+        )
+        raise typer.Exit(code = 1)
+
     typer.secho(
         f"Initialized arcline project at {path}",
         fg = typer.colors.GREEN,
@@ -67,7 +75,21 @@ def validate(
     :rtype:   None
     """
 
-    proj = Project.open(path)
+    try:
+        proj = Project.open(path)
+    except FileNotFoundError as exc:
+        typer.secho(
+            f"Project not found at {path}: {exc}",
+            fg = typer.colors.RED, err = True,
+        )
+        raise typer.Exit(code = 1)
+    except ValueError as exc:
+        typer.secho(
+            f"Project at {path} failed to load: {exc}",
+            fg = typer.colors.RED, err = True,
+        )
+        raise typer.Exit(code = 1)
+
     issues = proj.validate()
 
     if not issues:
@@ -152,4 +174,11 @@ def dashboard(
         )
         raise typer.Exit(code = 2)
 
-    run(path, host = host, port = port, debug = debug)
+    try:
+        run(path, host = host, port = port, debug = debug)
+    except FileNotFoundError as exc:
+        typer.secho(
+            f"Project not found at {path}: {exc}",
+            fg = typer.colors.RED, err = True,
+        )
+        raise typer.Exit(code = 1)

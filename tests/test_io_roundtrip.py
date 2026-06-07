@@ -173,3 +173,108 @@ def test_parquet_format_roundtrip(
     nodes, edges = from_parquet(nodes_pq, edges_pq)
     assert len(nodes) == len(sample_project.nodes)
     assert len(edges) == len(sample_project.edges)
+
+
+def test_save_writes_flat_arrays(sample_project : Project) -> None:
+    """Regression: nodes.json and edges.json must be flat arrays."""
+
+    import json as _json
+
+    nodes_raw = _json.loads(
+        (sample_project.path / "nodes.json").read_text(
+            encoding = "utf-8"
+        )
+    )
+    edges_raw = _json.loads(
+        (sample_project.path / "edges.json").read_text(
+            encoding = "utf-8"
+        )
+    )
+
+    assert isinstance(nodes_raw, list)
+    assert isinstance(edges_raw, list)
+    assert len(nodes_raw) == len(sample_project.nodes)
+    assert len(edges_raw) == len(sample_project.edges)
+    assert all("kind" in rec for rec in nodes_raw)
+    assert all("srcKey" in rec for rec in edges_raw)
+
+
+def test_open_accepts_legacy_envelope_form(
+        sample_project : Project
+) -> None:
+    """Back-compat: envelope-form nodes.json / edges.json still loads."""
+
+    import json as _json
+
+    nodes_path = sample_project.path / "nodes.json"
+    edges_path = sample_project.path / "edges.json"
+    nodes_records = _json.loads(nodes_path.read_text(encoding = "utf-8"))
+    edges_records = _json.loads(edges_path.read_text(encoding = "utf-8"))
+
+    nodes_path.write_text(
+        _json.dumps({"nodes": nodes_records, "edges": []}),
+        encoding = "utf-8",
+    )
+    edges_path.write_text(
+        _json.dumps({"nodes": [], "edges": edges_records}),
+        encoding = "utf-8",
+    )
+
+    reopened = Project.open(sample_project.path)
+    assert len(reopened.nodes) == len(sample_project.nodes)
+    assert len(reopened.edges) == len(sample_project.edges)
+
+
+def test_open_rejects_null_nodes_payload(
+        sample_project : Project
+) -> None:
+    """Regression: ``{"nodes": null}`` must raise ValueError, not TypeError."""
+
+    import json as _json
+
+    nodes_path = sample_project.path / "nodes.json"
+    edges_path = sample_project.path / "edges.json"
+
+    nodes_path.write_text(
+        _json.dumps({"nodes": None, "edges": []}),
+        encoding = "utf-8",
+    )
+    edges_path.write_text(
+        _json.dumps({"nodes": [], "edges": None}),
+        encoding = "utf-8",
+    )
+
+    with pytest.raises(ValueError):
+        Project.open(sample_project.path)
+
+
+def test_validator_warns_self_loop() -> None:
+    """Regression: srcKey == dstKey must emit a self-loop-edge warning."""
+
+    raw_nodes : List[Dict[str, Any]] = [
+        {"kind": "supplier", "name": "S", "hashKey": "N-S"},
+    ]
+    raw_edges : List[Dict[str, Any]] = [
+        {
+            "kind": "lane", "name": "loop", "hashKey": "E-LOOP",
+            "srcKey": "N-S", "dstKey": "N-S",
+            "distanceKm": 0.0, "costPerUnit": 0.0,
+            "transitDays": 0.0, "mode": "road",
+        },
+    ]
+
+    issues = validate_project(raw_nodes, raw_edges, _manifest())
+    assert any(i.code == "self-loop-edge" for i in issues)
+
+
+def test_validator_unknown_kind_is_error() -> None:
+    """Regression: unknown kind must be severity == 'error', not warning."""
+
+    raw_nodes : List[Dict[str, Any]] = [
+        {"kind": "alien", "name": "X", "hashKey": "N-X"},
+    ]
+    issues = validate_project(raw_nodes, [], _manifest())
+    matches = [i for i in issues if i.code == "unknown-node-kind"]
+
+    assert matches
+    assert all(i.severity == "error" for i in matches)

@@ -227,10 +227,19 @@ class NetworkXGraph(AbstractGraph):
             :attr:`hashKey`).
 
         :raises KeyError: If the node is not present in the graph.
+        :raises ValueError: If ``hashKey`` appears in ``changes``;
+            the identifier is immutable, remove and re-add the node
+            instead.
 
         :rtype:   AbstractNode
         :returns: The newly-constructed node with updates applied.
         """
+
+        if "hashKey" in changes:
+            raise ValueError(
+                "hashKey is immutable; remove and re-add the node "
+                "instead."
+            )
 
         if not self.G.has_node(node.hashKey):
             raise KeyError(
@@ -273,12 +282,19 @@ class NetworkXGraph(AbstractGraph):
             :attr:`hashKey`).
 
         :raises KeyError: If the edge is not present in the graph.
-        :raises ValueError: If ``srcNode`` or ``dstNode`` appears in
-            ``changes``.
+        :raises ValueError: If ``srcNode``, ``dstNode`` or ``hashKey``
+            appears in ``changes`` (endpoints and identifier are
+            immutable; remove and re-add the edge instead).
 
         :rtype:   AbstractEdge
         :returns: The newly-constructed edge with updates applied.
         """
+
+        if "hashKey" in changes:
+            raise ValueError(
+                "hashKey is immutable; remove and re-add the edge "
+                "instead."
+            )
 
         if "srcNode" in changes or "dstNode" in changes:
             raise ValueError(

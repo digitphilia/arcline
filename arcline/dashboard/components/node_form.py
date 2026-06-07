@@ -95,7 +95,7 @@ def __unwrap_optional__(annotation : Any) -> Any:
     return annotation
 
 
-def _infer_input(
+def infer_input(
         field_info : FieldInfo,
         value : Any,
         input_id : str
@@ -192,7 +192,7 @@ def make_node_form(
 
         input_id = f"{form_id_prefix}-{name}"
         current = __field_value__(instance, name)
-        control = _infer_input(field_info, current, input_id)
+        control = infer_input(field_info, current, input_id)
 
         rows.append(
             dbc.Row(

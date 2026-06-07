@@ -21,7 +21,7 @@ from typing import Optional
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-from arcline.dashboard.components.node_form import _infer_input
+from arcline.dashboard.components.node_form import infer_input
 from arcline.dashboard.state import session
 from arcline.graph.base.edges import AbstractEdge
 from arcline.graph.registry import resolve_edge
@@ -132,7 +132,7 @@ def make_edge_form(
             instance.model_dump().get(name) if instance is not None
             else None
         )
-        control = _infer_input(field_info, current, input_id)
+        control = infer_input(field_info, current, input_id)
 
         rows.append(
             dbc.Row(
