@@ -1,0 +1,24 @@
+/* arcline dashboard - minimal global styles */
+
+.kpi-card {
+    min-width: 140px;
+}
+
+.kpi-card h4 {
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.navbar-brand {
+    font-weight: 600;
+}
+
+.node-form-card,
+.edge-form-card {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+#viz-selected-panel {
+    max-height: 600px;
+    overflow-y: auto;
+}
