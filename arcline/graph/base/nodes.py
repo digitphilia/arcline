@@ -28,6 +28,13 @@ class AbstractNode(BaseModel, ABC):
     :param nodeData: A node can have multiple default attributes that
         is typically allowed in :mod:`networkx` and :mod:`igraph` to
         be defined as nodes' property during initialization.
+
+    The optional ``latitude`` and ``longitude`` fields allow callers
+    to attach geographic coordinates to a node; when populated, the
+    optional geographic coordinates support an optional geographic
+    visualization mode (e.g. Mapbox / OpenStreetMap tiles in the
+    dashboard) while leaving the abstract layout modes unaffected
+    when coordinates are absent.
     """
 
     name : Final[str] = Field(
@@ -40,6 +47,16 @@ class AbstractNode(BaseModel, ABC):
 
     nodeData : Optional[Dict[str, Any]] = Field(
         None, description = "Any Additional Node Attribute(s)"
+    )
+
+    latitude : Optional[float] = Field(
+        None, ge = -90.0, le = 90.0,
+        description = "Optional Latitude in Decimal Degrees [-90, 90]"
+    )
+
+    longitude : Optional[float] = Field(
+        None, ge = -180.0, le = 180.0,
+        description = "Optional Longitude in Decimal Degrees [-180, 180]"
     )
 
 

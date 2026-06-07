@@ -30,7 +30,7 @@ passed to NetworkX as the edge ``key``.
 """
 
 from collections.abc import Iterator
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import networkx
 
@@ -141,3 +141,409 @@ class NetworkXGraph(AbstractGraph):
             )
 
         return True
+
+
+    def addNode(self, node : AbstractNode) -> None:
+        """
+        Insert a node into the graph. The node payload is appended to
+        :attr:`nodes` and the underlying :class:`networkx.MultiDiGraph`
+        gets a new vertex keyed by :attr:`AbstractNode.hashKey` whose
+        attributes mirror the pydantic ``model_dump`` payload.
+
+        :type  node: AbstractNode
+        :param node: The node object to be inserted in the graph; must
+            carry a :attr:`hashKey` not already present in the graph.
+
+        :raises KeyError: If a node with the same :attr:`hashKey` is
+            already present in the graph.
+        """
+
+        if self.G.has_node(node.hashKey):
+            raise KeyError(
+                f"Node with hashKey {node.hashKey!r} already exists."
+            )
+
+        self.nodes.append(node)
+        self.G.add_node(
+            node.hashKey, **node.model_dump(exclude = {"hashKey"})
+        )
+
+
+    def addEdge(self, edge : AbstractEdge) -> None:
+        """
+        Insert an edge into the graph. The edge payload is appended
+        to :attr:`edges` and the underlying multi-graph is updated;
+        :attr:`AbstractEdge.hashKey` becomes the parallel-edge key so
+        that distinct lanes between the same endpoint pair remain
+        addressable.
+
+        :type  edge: AbstractEdge
+        :param edge: The edge object to be inserted; must reference
+            endpoints that already exist in the graph.
+
+        :raises KeyError: If an edge with the same :attr:`hashKey`
+            already exists, or if either endpoint is not present.
+        """
+
+        srcKey = edge.srcNode.hashKey
+        dstKey = edge.dstNode.hashKey
+
+        if not self.G.has_node(srcKey):
+            raise KeyError(
+                f"Source node {srcKey!r} not present in the graph."
+            )
+
+        if not self.G.has_node(dstKey):
+            raise KeyError(
+                f"Destination node {dstKey!r} not present in the graph."
+            )
+
+        if self.G.has_edge(srcKey, dstKey, key = edge.hashKey):
+            raise KeyError(
+                f"Edge with hashKey {edge.hashKey!r} already exists "
+                f"between {srcKey!r} and {dstKey!r}."
+            )
+
+        self.edges.append(edge)
+        attrs = edge.model_dump(
+            exclude = {"hashKey", "srcNode", "dstNode"}
+        )
+        self.G.add_edge(srcKey, dstKey, key = edge.hashKey, **attrs)
+
+
+    def updateNode(
+            self, node : AbstractNode, **changes : Any
+    ) -> AbstractNode:
+        """
+        Apply ``changes`` to an existing node via
+        :meth:`pydantic.BaseModel.model_copy`. The replacement
+        instance is written back into :attr:`nodes` and the matching
+        vertex attributes on the underlying NetworkX graph are
+        refreshed in place; the vertex identifier
+        (:attr:`hashKey`) is preserved.
+
+        :type  node: AbstractNode
+        :param node: The node currently in the graph (looked up by
+            :attr:`hashKey`).
+
+        :raises KeyError: If the node is not present in the graph.
+
+        :rtype:   AbstractNode
+        :returns: The newly-constructed node with updates applied.
+        """
+
+        if not self.G.has_node(node.hashKey):
+            raise KeyError(
+                f"Node with hashKey {node.hashKey!r} not in graph."
+            )
+
+        updated = node.model_copy(update = changes)
+
+        for idx, cur in enumerate(self.nodes):
+            if cur.hashKey == node.hashKey:
+                self.nodes[idx] = updated
+                break
+        else:
+            raise KeyError(
+                f"Node {node.hashKey!r} missing from node list."
+            )
+
+        self.G.nodes[node.hashKey].clear()
+        self.G.nodes[node.hashKey].update(
+            updated.model_dump(exclude = {"hashKey"})
+        )
+
+        return updated
+
+
+    def updateEdge(
+            self, edge : AbstractEdge, **changes : Any
+    ) -> AbstractEdge:
+        """
+        Apply ``changes`` to an existing edge via
+        :meth:`pydantic.BaseModel.model_copy`. Endpoints are immutable
+        once an edge is inserted; passing ``srcNode`` or ``dstNode``
+        in ``changes`` raises :class:`ValueError`. The replacement
+        instance is written back into :attr:`edges` and the matching
+        edge attributes on the underlying NetworkX multi-graph are
+        refreshed in place.
+
+        :type  edge: AbstractEdge
+        :param edge: The edge currently in the graph (looked up by
+            :attr:`hashKey`).
+
+        :raises KeyError: If the edge is not present in the graph.
+        :raises ValueError: If ``srcNode`` or ``dstNode`` appears in
+            ``changes``.
+
+        :rtype:   AbstractEdge
+        :returns: The newly-constructed edge with updates applied.
+        """
+
+        if "srcNode" in changes or "dstNode" in changes:
+            raise ValueError(
+                "Cannot rewire an edge via updateEdge; remove and "
+                "re-add the edge instead."
+            )
+
+        srcKey = edge.srcNode.hashKey
+        dstKey = edge.dstNode.hashKey
+
+        if not self.G.has_edge(srcKey, dstKey, key = edge.hashKey):
+            raise KeyError(
+                f"Edge {edge.hashKey!r} between {srcKey!r} and "
+                f"{dstKey!r} not present in the graph."
+            )
+
+        updated = edge.model_copy(update = changes)
+
+        for idx, cur in enumerate(self.edges):
+            if cur.hashKey == edge.hashKey \
+                    and cur.srcNode.hashKey == srcKey \
+                    and cur.dstNode.hashKey == dstKey:
+                self.edges[idx] = updated
+                break
+        else:
+            raise KeyError(
+                f"Edge {edge.hashKey!r} missing from edge list."
+            )
+
+        attrs = updated.model_dump(
+            exclude = {"hashKey", "srcNode", "dstNode"}
+        )
+        self.G[srcKey][dstKey][edge.hashKey].clear()
+        self.G[srcKey][dstKey][edge.hashKey].update(attrs)
+
+        return updated
+
+
+    def removeNode(self, node : AbstractNode) -> None:
+        """
+        Remove a node and all of its incident edges from the graph.
+        Removal is cascading: every edge touching the node is also
+        deleted, and :attr:`nodes` / :attr:`edges` are filtered to
+        keep the abstract view in sync with the backend.
+
+        :type  node: AbstractNode
+        :param node: The node currently in the graph (looked up by
+            :attr:`hashKey`).
+
+        :raises KeyError: If the node is not present in the graph.
+        """
+
+        if not self.G.has_node(node.hashKey):
+            raise KeyError(
+                f"Node with hashKey {node.hashKey!r} not in graph."
+            )
+
+        self.G.remove_node(node.hashKey)
+        self.nodes = [
+            cur for cur in self.nodes if cur.hashKey != node.hashKey
+        ]
+        self.edges = [
+            cur for cur in self.edges
+            if cur.srcNode.hashKey != node.hashKey
+            and cur.dstNode.hashKey != node.hashKey
+        ]
+
+
+    def hasNode(self, node : AbstractNode) -> bool:
+        """
+        Test whether a node is present in the graph by its
+        :attr:`hashKey`.
+
+        :type  node: AbstractNode
+        :param node: The node whose presence is to be tested.
+
+        :rtype:   bool
+        :returns: ``True`` if the node is present, else ``False``.
+        """
+
+        return bool(self.G.has_node(node.hashKey))
+
+
+    def removeEdge(self, edge : AbstractEdge) -> None:
+        """
+        Remove a specific parallel edge between two endpoints. In a
+        multi-graph the :attr:`AbstractEdge.hashKey` disambiguates
+        which lane is removed; sibling lanes between the same pair
+        are left intact.
+
+        :type  edge: AbstractEdge
+        :param edge: The edge to be removed.
+
+        :raises KeyError: If the edge does not exist in the graph.
+        """
+
+        srcKey = edge.srcNode.hashKey
+        dstKey = edge.dstNode.hashKey
+
+        if not self.G.has_edge(srcKey, dstKey, key = edge.hashKey):
+            raise KeyError(
+                f"Edge {edge.hashKey!r} between {srcKey!r} and "
+                f"{dstKey!r} not present in the graph."
+            )
+
+        self.G.remove_edge(srcKey, dstKey, key = edge.hashKey)
+        self.edges = [
+            cur for cur in self.edges if cur.hashKey != edge.hashKey
+        ]
+
+
+    def hasEdge(
+            self, src : AbstractNode, dst : AbstractNode
+    ) -> bool:
+        """
+        Test whether at least one directed edge exists from ``src``
+        to ``dst`` in the underlying multi-graph.
+
+        :type  src: AbstractNode
+        :param src: The source node of the prospective edge.
+
+        :type  dst: AbstractNode
+        :param dst: The destination node of the prospective edge.
+
+        :rtype:   bool
+        :returns: ``True`` if at least one parallel edge exists
+            between the two endpoints (in the given direction).
+        """
+
+        return bool(self.G.has_edge(src.hashKey, dst.hashKey))
+
+
+    def neighbors(
+            self, node : AbstractNode
+    ) -> Tuple[AbstractNode, ...]:
+        """
+        Return the unique union of in-neighbors and out-neighbors of
+        a node as :class:`AbstractNode` instances.
+
+        :type  node: AbstractNode
+        :param node: The node whose neighbors are to be retrieved.
+
+        :raises KeyError: If the node is not present in the graph.
+
+        :rtype:   Tuple[AbstractNode, ...]
+        :returns: Tuple of unique neighbor node instances.
+        """
+
+        if not self.G.has_node(node.hashKey):
+            raise KeyError(
+                f"Node with hashKey {node.hashKey!r} not in graph."
+            )
+
+        index = self._nodesByKey
+        keys : List[str] = []
+        seen : set = set()
+
+        for key in self.G.successors(node.hashKey):
+            if key not in seen:
+                seen.add(key)
+                keys.append(key)
+
+        for key in self.G.predecessors(node.hashKey):
+            if key not in seen:
+                seen.add(key)
+                keys.append(key)
+
+        return tuple(index[key] for key in keys if key in index)
+
+
+    def predecessors(
+            self, node : AbstractNode
+    ) -> Tuple[AbstractNode, ...]:
+        """
+        Return the unique in-neighbors of a node as
+        :class:`AbstractNode` instances.
+
+        :type  node: AbstractNode
+        :param node: The node whose predecessors are to be retrieved.
+
+        :raises KeyError: If the node is not present in the graph.
+
+        :rtype:   Tuple[AbstractNode, ...]
+        :returns: Tuple of unique predecessor node instances.
+        """
+
+        if not self.G.has_node(node.hashKey):
+            raise KeyError(
+                f"Node with hashKey {node.hashKey!r} not in graph."
+            )
+
+        index = self._nodesByKey
+        return tuple(
+            index[key] for key in self.G.predecessors(node.hashKey)
+            if key in index
+        )
+
+
+    def successors(
+            self, node : AbstractNode
+    ) -> Tuple[AbstractNode, ...]:
+        """
+        Return the unique out-neighbors of a node as
+        :class:`AbstractNode` instances.
+
+        :type  node: AbstractNode
+        :param node: The node whose successors are to be retrieved.
+
+        :raises KeyError: If the node is not present in the graph.
+
+        :rtype:   Tuple[AbstractNode, ...]
+        :returns: Tuple of unique successor node instances.
+        """
+
+        if not self.G.has_node(node.hashKey):
+            raise KeyError(
+                f"Node with hashKey {node.hashKey!r} not in graph."
+            )
+
+        index = self._nodesByKey
+        return tuple(
+            index[key] for key in self.G.successors(node.hashKey)
+            if key in index
+        )
+
+
+    def inDegree(self, node : AbstractNode) -> int:
+        """
+        Return the in-degree of a node. In a multi-graph each
+        parallel edge contributes independently.
+
+        :type  node: AbstractNode
+        :param node: The node whose in-degree is to be retrieved.
+
+        :raises KeyError: If the node is not present in the graph.
+
+        :rtype:   int
+        :returns: Total in-degree of the node.
+        """
+
+        if not self.G.has_node(node.hashKey):
+            raise KeyError(
+                f"Node with hashKey {node.hashKey!r} not in graph."
+            )
+
+        return int(self.G.in_degree(node.hashKey))
+
+
+    def outDegree(self, node : AbstractNode) -> int:
+        """
+        Return the out-degree of a node. In a multi-graph each
+        parallel edge contributes independently.
+
+        :type  node: AbstractNode
+        :param node: The node whose out-degree is to be retrieved.
+
+        :raises KeyError: If the node is not present in the graph.
+
+        :rtype:   int
+        :returns: Total out-degree of the node.
+        """
+
+        if not self.G.has_node(node.hashKey):
+            raise KeyError(
+                f"Node with hashKey {node.hashKey!r} not in graph."
+            )
+
+        return int(self.G.out_degree(node.hashKey))

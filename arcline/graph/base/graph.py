@@ -227,7 +227,7 @@ class AbstractGraph(ABC):
 
 
     @property
-    def _edgesByNodePair(self) -> Dict[Tuple(str, str), str]: # type: ignore
+    def _edgesByNodePair(self) -> Dict[Tuple[str, str], str]:
         """
         Returns an iterable of edges by pairing the "src → dst" as the
         keys and edges' hash key as the value.
@@ -306,6 +306,113 @@ class AbstractGraph(ABC):
 
         :raises KeyError: If the edge (``AbstractEdge``) does not
             exists in the graph.
+        """
+
+        pass
+
+
+    @abstractmethod
+    def addNode(self, node : AbstractNode) -> None:
+        """
+        Insert a node into the graph. The node payload is appended to
+        :attr:`nodes` and the underlying backend graph is updated so
+        that subsequent traversal queries observe the new vertex
+        without rebuilding the graph from scratch.
+
+        :type  node: AbstractNode
+        :param node: The node object to be inserted in the graph; this
+            should be an instance of ``AbstractNode`` (or any concrete
+            subclass) and must carry a unique :attr:`hashKey`.
+
+        :raises KeyError: If a node with the same :attr:`hashKey` is
+            already present in the graph.
+        """
+
+        pass
+
+
+    @abstractmethod
+    def addEdge(self, edge : AbstractEdge) -> None:
+        """
+        Insert an edge into the graph. Both endpoints referenced by
+        ``edge.srcNode`` and ``edge.dstNode`` must already be present
+        in the graph; this method does not implicitly create dangling
+        endpoints. The edge payload is appended to :attr:`edges` and
+        the backend multi-graph is updated using the edge's
+        :attr:`hashKey` as the parallel-edge key.
+
+        :type  edge: AbstractEdge
+        :param edge: The edge object to be inserted in the graph; this
+            should be an instance of ``AbstractEdge`` (or any concrete
+            subclass) and must carry a unique :attr:`hashKey`.
+
+        :raises KeyError: If an edge with the same :attr:`hashKey`
+            already exists, or if either endpoint
+            (``edge.srcNode.hashKey`` / ``edge.dstNode.hashKey``) is
+            not currently present in the graph.
+        """
+
+        pass
+
+
+    @abstractmethod
+    def updateNode(
+            self, node : AbstractNode, **changes : Any
+    ) -> AbstractNode:
+        """
+        Apply a set of attribute changes to an existing node. The
+        existing instance is replaced (via :meth:`pydantic.BaseModel.
+        model_copy`) with a new instance carrying the updated fields,
+        in both :attr:`nodes` and the backend graph's vertex
+        attributes, keeping the two views synchronised.
+
+        :type  node: AbstractNode
+        :param node: The node currently present in the graph that
+            should be updated. Lookup is performed by :attr:`hashKey`.
+
+        **Keyword Arguments**
+
+        Any field accepted by the concrete node class can be passed as
+        a keyword argument; unknown fields raise a pydantic validation
+        error.
+
+        :raises KeyError: If the node is not present in the graph.
+
+        :rtype:   AbstractNode
+        :returns: The newly-constructed node instance reflecting the
+            applied changes, also stored in :attr:`nodes`.
+        """
+
+        pass
+
+
+    @abstractmethod
+    def updateEdge(
+            self, edge : AbstractEdge, **changes : Any
+    ) -> AbstractEdge:
+        """
+        Apply a set of attribute changes to an existing edge. The
+        endpoints (:attr:`srcNode` and :attr:`dstNode`) are immutable
+        once an edge is inserted; rewiring an edge must be modeled as
+        a remove-then-add. All other fields can be modified in place.
+
+        :type  edge: AbstractEdge
+        :param edge: The edge currently present in the graph that
+            should be updated. Lookup is performed by :attr:`hashKey`.
+
+        **Keyword Arguments**
+
+        Any field accepted by the concrete edge class can be passed
+        as a keyword argument except ``srcNode`` / ``dstNode``;
+        unknown fields raise a pydantic validation error.
+
+        :raises KeyError: If the edge is not present in the graph.
+        :raises ValueError: If ``srcNode`` or ``dstNode`` appears in
+            ``changes``; rewiring must be modeled as remove-then-add.
+
+        :rtype:   AbstractEdge
+        :returns: The newly-constructed edge instance reflecting the
+            applied changes, also stored in :attr:`edges`.
         """
 
         pass
