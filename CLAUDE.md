@@ -13,8 +13,9 @@
 1. **Model** a supply chain as typed nodes (Supplier, Plant, Warehouse/DC, Customer) and typed edges (Lane, Production, Storage) with rich, validated attributes.
 2. **Persist** that network as portable, git-versionable artifacts (JSON / YAML / Parquet).
 3. **Visualize and edit** it in an interactive **Dash** dashboard with full CRUD on nodes and edges, and a dedicated `dashboard/visualize` view that renders the entire network (abstract layout *or* geographic map when coordinates exist).
-4. **Optimize** flow, sourcing, facility-location, and capacity decisions on the network using **Pyomo** as the modeling layer with a solver-agnostic backend (CBC, HiGHS, Gurobi, CPLEX).
-5. **Compare scenarios** (what-if, sensitivity, share-of-business) with reproducible, auditable results.
+4. **Pull historic performance** for any node/edge attribute (e.g., the historic lead-time series for a `Lane` between a port and a supplier) from a **MS-SQL Server** data warehouse and analyse it (time series, distribution, summary stats, rolling stats) directly inside the dashboard.
+5. **Optimize** flow, sourcing, facility-location, and capacity decisions on the network using **Pyomo** as the modeling layer with a solver-agnostic backend (CBC, HiGHS, Gurobi, CPLEX).
+6. **Compare scenarios** (what-if, sensitivity, share-of-business) with reproducible, auditable results.
 
 The non-goal is to reinvent solvers, geocoders, or general-purpose graph libraries. `arcline` is the **modeling, I/O, dashboard, and orchestration layer** that sits between `networkx`/`igraph` (graph storage) and Pyomo + LP/MILP solvers (math), and exposes the result through Dash.
 
@@ -28,9 +29,10 @@ These were chosen up-front and the plan below assumes them:
 | ------------------------ | ----------------------------------------------------------------------------------------- |
 | **Dashboard stack**      | **Dash + Plotly** (production analytics oriented)                                         |
 | **Persistence**          | **File-based** project folder: JSON/YAML for schema, Parquet for tabular bulk data        |
+| **Historic data source** | **MS-SQL Server** via **SQLAlchemy Core + pyodbc**; on-demand fetch + local Parquet cache |
 | **Optimization layer**   | **Pyomo** (MILP/LP) with solver-agnostic backend (CBC default, HiGHS, Gurobi, CPLEX)      |
 | **Graph viz**            | **Plotly** (`Scattergl` for abstract layouts, `Scattermapbox` for geo)                    |
-| **Phasing**              | (1) Graph + I/O + Dashboard → (2) Optimization → (3) Scenarios & Sensitivity              |
+| **Phasing**              | (1) Graph + I/O + Dashboard → (1.5) Historian + Analytics → (2) Optimization → (3) Scenarios & Sensitivity |
 | **Geospatial**           | **Optional** lat/lon on nodes; geo view only when coords exist, else force-directed/tiered |
 | **Built-in taxonomy**    | **Yes** — ship `Supplier`, `Plant`, `Warehouse`, `Customer`, `Lane`, `Production`, `Storage` |
 | **Graph backend**        | `networkx.MultiDiGraph` (default), `igraph` (for >1M edges) — already abstracted          |
@@ -104,6 +106,16 @@ arcline/
 │   ├── schema.py                # JSON-schema for nodes.json / edges.json
 │   └── validators.py            # cross-file integrity checks (orphan edges, dup keys)
 │
+├── historian/                   # NEW — Phase 1.5: MS-SQL historic data layer
+│   ├── __init__.py
+│   ├── connection.py            # SQLAlchemy engine factory; reads ARCLINE_MSSQL_DSN
+│   ├── spec.py                  # HistorySpec pydantic model (table, keyCol, valueCol, tsCol, filters)
+│   ├── fetcher.py               # Generic fetch(spec, hashKey, range) -> pandas.DataFrame
+│   ├── cache.py                 # Parquet cache under <project>/.cache/history/
+│   ├── analytics.py             # univariate stats: summary, rolling, distribution bins
+│   ├── registry.py              # (kind, attribute) -> HistorySpec lookup helpers
+│   └── exceptions.py            # ConnectionError, SpecError, EmptyHistoryError
+│
 ├── optim/                       # NEW — Phase 2: Pyomo modeling
 │   ├── __init__.py
 │   ├── solvers.py               # solver factory (cbc/highs/gurobi/cplex)
@@ -142,12 +154,14 @@ arcline/
 │   │   ├── nodes.py             # /dashboard/nodes — list + create + edit + delete
 │   │   ├── edges.py             # /dashboard/edges — list + create + edit + delete
 │   │   ├── visualize.py         # /dashboard/visualize — full network render
+│   │   ├── history.py           # /dashboard/history — historic data analytics (Phase 1.5)
 │   │   ├── scenarios.py         # /dashboard/scenarios (Phase 3)
 │   │   └── solve.py             # /dashboard/solve  (Phase 2)
 │   ├── callbacks/               # Dash callbacks split by page
 │   │   ├── nodes_cb.py
 │   │   ├── edges_cb.py
-│   │   └── visualize_cb.py
+│   │   ├── visualize_cb.py
+│   │   └── history_cb.py
 │   ├── viz/                     # rendering helpers
 │   │   ├── layouts.py           # force-directed (NetworkX spring), tiered, geo
 │   │   ├── plotly_graph.py      # Plotly trace builders for nodes/edges
@@ -251,7 +265,129 @@ my_network/
 
 ---
 
-## 6. Phase 2 — Optimization (`arcline.optim`)
+## 6. Phase 1.5 — Historian & Analytics (`arcline.historian`)
+
+**Goal:** every node and edge attribute can be transparently traced back to its historic time-series in a MS-SQL Server data warehouse, fetched on demand, cached locally, and analysed (numerically and visually) inside the dashboard. This phase ships **right after the Phase 1 MVP, before optimization**, so analysts get value before any solver is wired in. Stochastic optimization in later phases will piggy-back on the same fetched history.
+
+### 6.1 Declarative `HistorySpec` — convention over configuration
+
+Each concrete node/edge class declares — at class level — *how* a given attribute maps to a row-set in MS-SQL. The framework auto-builds the parameterized SQL; classes never write SQL by hand.
+
+```python
+from arcline.historian import HistorySpec
+
+class Lane(AbstractEdge):
+    leadTimeDays   : float = Field(...)
+    distanceKm     : float = Field(...)
+    costPerUnit    : float = Field(...)
+
+    history : ClassVar[Dict[str, HistorySpec]] = {
+        "leadTimeDays": HistorySpec(
+            table       = "dwh.fact_lane_lead_time",
+            keyColumn   = "edge_hash_key",       # matches AbstractEdge.hashKey
+            valueColumn = "actual_lead_time_days",
+            tsColumn    = "shipment_date",
+            filters     = {"is_active": 1},      # static WHERE predicates
+            description = "Realized lead time per shipment, daily grain.",
+        ),
+        "costPerUnit": HistorySpec(
+            table       = "dwh.fact_lane_cost",
+            keyColumn   = "edge_hash_key",
+            valueColumn = "unit_cost",
+            tsColumn    = "invoice_date",
+        ),
+    }
+```
+
+* `HistorySpec` is a pydantic model with `table`, `keyColumn`, `valueColumn`, `tsColumn`, optional `schema`, `filters: Dict[str, Any]`, optional `aggregation: Literal["raw","daily","weekly","monthly"]`, and optional `valueTransform` (e.g., `"hours_to_days"`).
+* The framework composes a parameterized SELECT (SQLAlchemy Core, never string-concatenation) with `WHERE keyColumn = :hashKey AND tsColumn BETWEEN :start AND :end`, plus the static `filters` dict.
+* **Override hook (escape hatch):** any class may override `def fetchHistory(self, attribute, start, end) -> pd.DataFrame` for non-trivial joins. The convention path is preferred whenever it suffices.
+
+### 6.2 Connection layer
+
+* **MS-SQL Server** via **SQLAlchemy Core + pyodbc** (`mssql+pyodbc://...`).
+* Connection string read from `ARCLINE_MSSQL_DSN` env var (12-factor); no credentials are ever stored in `manifest.yaml` or any tracked file.
+* Single process-wide engine with connection pooling; lazy initialization on first fetch so users without a DB still load projects.
+* `historian.connection.test_connection() -> bool` exposed for the dashboard's "DB status" indicator.
+
+### 6.3 Fetch + cache strategy
+
+* **On-demand fetch with local Parquet cache.** The first call fetches from MS-SQL and writes:
+
+  ```
+  <project>/.cache/history/
+      <kind>/<hashKey>/<attribute>__<start>_<end>.parquet
+  ```
+
+  Subsequent calls within the same `[start, end)` window read from the Parquet without touching the DB.
+* The cache directory is **always gitignored** (`arcline init` writes `.gitignore` with this entry).
+* CLI: `arcline history sync --project ./demo_network [--since YYYY-MM-DD]` for bulk pre-warming (operationally useful for offline analyst sessions).
+* `historian.cache.invalidate(...)` and `arcline history clear` for cache busting.
+* Cache key includes a hash of the `HistorySpec` so spec changes invalidate stale caches automatically.
+
+### 6.4 Analytics primitives (univariate baseline)
+
+`historian.analytics` ships the baseline analytics every supply-chain analyst needs on a single attribute time-series; deeper analytics (outlier detection, changepoints, forecasting, cross-attribute correlation) are deferred to a future phase to keep this one tight.
+
+* `summary(df) -> dict` — count, min, max, mean, std, median, p5/p25/p75/p95, last value, last refresh timestamp.
+* `rolling(df, window) -> pd.DataFrame` — rolling mean & std on a configurable window (default 7-period).
+* `distribution(df, bins) -> pd.DataFrame` — histogram bins for the value column.
+* `resample(df, freq) -> pd.DataFrame` — convenience wrapper around `pandas.DataFrame.resample`.
+
+All return plain `pandas` objects so they trivially feed Plotly traces in the dashboard.
+
+### 6.5 Public API
+
+```python
+from arcline.historian import fetch, summary, rolling
+
+edge = graph._edgesByKey["E-PORT-SUPPLIER-01"]["..."]
+df = fetch(edge, attribute="leadTimeDays", start="2023-01-01", end="2025-01-01")
+print(summary(df))
+roll = rolling(df, window=7)
+```
+
+The same call path is what the dashboard uses; there is no parallel "dashboard-only" implementation.
+
+### 6.6 Dashboard `/dashboard/history`
+
+A new dedicated page (registered via Dash multi-page registry) sitting alongside `/dashboard/visualize`.
+
+* **Selector pane (left):**
+  * Entity type toggle: *Nodes* / *Edges*.
+  * Searchable list of all entities in the current project (filterable by `kind`).
+  * Once an entity is selected, the framework introspects `entity.history` (the `HistorySpec` mapping) and lists all attributes that have a spec.
+  * Date range picker (defaults to last 24 months); attribute aggregation toggle (`raw` / `daily` / `weekly` / `monthly`).
+* **Charts pane (right):**
+  * **Time-series** Plotly line chart of the value column with hover tooltips and an overlaid rolling mean/std band (toggleable).
+  * **Distribution** histogram + box plot side panel.
+  * **Summary stats** card (count, min/mean/median/max, std, p5/p95, last value, last refreshed).
+* **Operational affordances:**
+  * "Refresh from DB" button (bypasses cache for the selected (entity, attribute, range) only).
+  * Top-bar **DB status pill**: green = connected, amber = cached-only fallback, red = `ARCLINE_MSSQL_DSN` not set or unreachable.
+  * "Export CSV / Parquet" button writes to `<project>/exports/`.
+* **Cross-page integration with `/dashboard/visualize`:**
+  * Clicking a node/edge on the visualize canvas exposes a "View history" link in the side drawer that deep-links to `/dashboard/history?entity=<hashKey>&attribute=<...>`.
+* **Performance guardrails:**
+  * Server-side downsampling (LTTB) for series longer than ~50k points before sending to the browser.
+  * Streaming/chunked fetch for very large ranges (>5 years) to keep the UI responsive.
+
+### 6.7 Phase 1.5 deliverables checklist
+
+* [ ] `arcline.historian.spec.HistorySpec` (pydantic) + class-level `history` mapping convention on `AbstractNode` / `AbstractEdge`.
+* [ ] SQLAlchemy Core engine factory + `pyodbc` driver wiring; `ARCLINE_MSSQL_DSN` discovery; `test_connection()`.
+* [ ] Generic parameterized fetcher with static-filter merging and timestamp range binding.
+* [ ] Parquet cache layer with spec-hash invalidation; `<project>/.cache/history/` and gitignore handling.
+* [ ] `arcline history sync` and `arcline history clear` CLI commands.
+* [ ] `analytics.summary` / `rolling` / `distribution` / `resample`.
+* [ ] `HistorySpec` definitions for the built-in taxonomy (Lane lead time & cost, Plant production rate, Warehouse throughput, Customer demand) — stub specs that work against an example MS-SQL schema documented under `examples/`.
+* [ ] Dash page `/dashboard/history` + callbacks + DB status pill.
+* [ ] Deep-link integration from `/dashboard/visualize` side drawer.
+* [ ] Tests: unit tests on cache hit/miss, spec-hash invalidation, query composition (using `sqlalchemy`'s compile assertion, no live DB); integration test marked `@pytest.mark.mssql` for an optional CI matrix.
+
+---
+
+## 7. Phase 2 — Optimization (`arcline.optim`)
 
 **Goal:** turn an `AbstractGraph` into a Pyomo `ConcreteModel`, solve it, and surface results back on the graph and in the dashboard.
 
@@ -267,7 +403,14 @@ my_network/
 
 ---
 
-## 7. Phase 3 — Scenarios & Sensitivity
+### 7.1 Hand-off from the historian
+
+* `historian.analytics.summary(...)` is the canonical source for fitted means / std-devs that feed deterministic optim parameters (e.g., expected `leadTimeDays` for a `Lane` is taken from the historic mean, not the raw attribute value, when `params={"useHistory": True}` is passed to `compile`).
+* The same fetched DataFrames seed empirical distributions for future stochastic / robust extensions.
+
+---
+
+## 8. Phase 3 — Scenarios & Sensitivity
 
 * **`Scenario`** = `(name, base_project, overrides, model_name, model_params, result)`. `overrides` is a small DSL: `{"nodes": {"P1": {"maxCapacity": 5000}}, "edges": {...}}`.
 * **`ScenarioWorkspace`** — manages many scenarios under `<project>/scenarios/`, each with its own `manifest.yaml`, `overrides.json`, `result.parquet`.
@@ -277,7 +420,7 @@ my_network/
 
 ---
 
-## 8. Cross-cutting Concerns
+## 9. Cross-cutting Concerns
 
 | Concern              | Approach                                                                                                |
 | -------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -298,20 +441,22 @@ my_network/
 ```
 core      : pydantic>=2, networkx>=3, pandas, pyarrow, pyyaml, typer, structlog, pydantic-settings
 dashboard : dash>=2.17, dash-bootstrap-components, plotly>=5, dash-ag-grid, flask-caching
-optim     : pyomo>=6.7, highspy           # CBC via apt/conda; gurobi/cplex are user-installed
+historian : sqlalchemy>=2, pyodbc                # MS-SQL driver is user-installed (msodbcsql)
+optim     : pyomo>=6.7, highspy                  # CBC via apt/conda; gurobi/cplex are user-installed
 igraph    : python-igraph
 dev       : pytest, pytest-cov, ruff, mypy, sphinx, myst-parser, sphinx-autoapi, dash[testing]
 ```
 
 ---
 
-## 9. Public API Sketch
+## 10. Public API Sketch
 
 ```python
 import arcline
 from arcline.graph.library import Supplier, Plant, Warehouse, Customer, Lane
 from arcline.graph.builder import NetworkBuilder
 from arcline.io import Project
+from arcline.historian import fetch, summary, rolling
 from arcline.optim import compile, get_solver
 from arcline.scenarios import Scenario
 
@@ -326,8 +471,15 @@ graph = b.build(backend="networkx")
 proj = Project.fromGraph(graph, path="./demo_network")
 proj.save()
 
-# --- optimize ---
-model = compile(graph, model="min_cost_flow", params={"horizon": 1})
+# --- historic analysis (Phase 1.5) ---
+edge = graph._edgesByKey["E-S1P1"][("N-S1", "N-P1")]
+df = fetch(edge, attribute="leadTimeDays", start="2023-01-01", end="2025-01-01")
+print(summary(df))                # mean / std / p95 / last value
+roll = rolling(df, window=14)     # 14-period rolling mean/std
+
+# --- optimize (mean lead time pulled from historian) ---
+model = compile(graph, model="min_cost_flow",
+                params={"horizon": 1, "useHistory": True})
 result = get_solver("highs").solve(model)
 result.apply_to(graph)
 
@@ -337,7 +489,7 @@ result.apply_to(graph)
 
 ---
 
-## 10. Risks & Mitigations
+## 11. Risks & Mitigations
 
 | Risk                                                          | Mitigation                                                                          |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -346,19 +498,26 @@ result.apply_to(graph)
 | Pyomo solver availability varies across user environments     | CBC fallback bundled via `pulp`-style or conda; clear errors when solver missing.   |
 | Schema evolution breaks saved projects                        | `manifest.yaml` carries `arcline_schema_version`; migration scripts under `io/migrations/`. |
 | Auto-generated forms can't express every constraint           | Allow per-class form overrides via `class Meta: form_overrides = {...}`.            |
+| MS-SQL driver / network unavailable in analyst environments   | DB access is fully optional; cached Parquet under `.cache/history/` keeps `/dashboard/history` usable offline; DB-status pill makes the mode explicit. |
+| Bad / drifting `HistorySpec` definitions silently return empty results | Spec-hash in cache key + `EmptyHistoryError` surfaced as a banner on `/dashboard/history`; `arcline validate --history` runs spec smoke-checks against the live DB. |
+| Large historic pulls (years × thousands of edges) overwhelm the dashboard | Server-side LTTB downsampling for >50k points; chunked fetch for >5-year ranges; bulk pre-warm via `arcline history sync` keeps interactive paths fast. |
+| Credential leakage through saved projects                     | Connection string lives **only** in `ARCLINE_MSSQL_DSN`; never serialised into `manifest.yaml`, cache files, or logs (redaction filter in `utils.logging`). |
 
 ---
 
-## 11. Open Questions (to revisit)
+## 12. Open Questions (to revisit)
 
 1. **Authentication / multi-user dashboard** — defer to a future phase, but decide on the interface (Flask blueprints vs. embedding in Django) before locking the dashboard module boundaries.
 2. **Geocoding** — out of scope for now; users supply lat/lon. Worth a thin optional adapter (`arcline.utils.geo.geocode`) over Nominatim later?
 3. **Solver licensing** — Gurobi/CPLEX are user-supplied; do we ship Docker images with HiGHS + CBC pre-installed?
 4. **Time-series demand** — Phase 3+: how do we represent demand profiles (CSV link from node, or inline)?
+5. **Advanced analytics** — outlier / changepoint detection, forecasting (statsmodels / Prophet), and cross-attribute correlation are intentionally deferred from Phase 1.5; revisit once the baseline historian is in production use.
+6. **Multi-database support** — MS-SQL is the only target now; the SQLAlchemy abstraction leaves the door open to Postgres / Snowflake / BigQuery later, but no work is planned in the current roadmap.
+7. **Auth for the historian** — env-var DSN is sufficient for now; Azure AD / Managed Identity / Kerberos integrated auth is parked for a later iteration.
 
 ---
 
-## 12. Definition of Done — Phase 1
+## 13. Definition of Done — Phase 1
 
 A new user can:
 
@@ -369,3 +528,17 @@ arcline dashboard my_network
 ```
 
 …open `http://localhost:8050`, **create** a Supplier, a Plant, a Warehouse, a Customer, **connect** them with Lanes through the UI, **see** the network on `/dashboard/visualize` (force-directed by default, switching to geo when they fill in lat/lon), and **save** — producing a clean, git-committable `nodes.json` / `edges.json` / `manifest.yaml`. Re-opening the project reproduces the exact same network. CI is green; docs build; one example project runs end-to-end.
+
+---
+
+## 14. Definition of Done — Phase 1.5
+
+With `ARCLINE_MSSQL_DSN` set, an analyst can:
+
+```bash
+export ARCLINE_MSSQL_DSN="mssql+pyodbc://..."
+arcline history sync ./demo_network --since 2023-01-01
+arcline dashboard ./demo_network
+```
+
+…open `/dashboard/history`, pick a `Lane` between a port and a supplier, choose `leadTimeDays`, see a populated time-series chart, distribution histogram, and summary-stats card pulled from MS-SQL (or warm cache); deep-link from any node/edge on `/dashboard/visualize` into the same view; toggle the DB-status pill from green ↔ amber by unsetting the env var and verify the dashboard still works against the cached Parquet. `arcline validate --history` reports zero broken `HistorySpec` definitions for the built-in taxonomy. No credentials appear in any project file or log line.
