@@ -227,7 +227,8 @@ class Project:
             cls,
             path : Union[Path, str],
             name : Optional[str] = None,
-            description : str = ""
+            description : str = "",
+            persist : bool = True
     ) -> "Project":
         """
         Create an empty arcline project on disk and return the
@@ -246,6 +247,15 @@ class Project:
 
         :type  description: str
         :param description: Free-form project description.
+
+        :type  persist: bool
+        :param persist: When ``True`` (default) the manifest plus
+            empty ``nodes.json`` / ``edges.json`` are written to
+            disk immediately. Pass ``False`` to skip the artifact
+            writes (only the auxiliary directories and ``.gitignore``
+            are created); callers must invoke :meth:`save` to flush
+            state. Used internally by :meth:`fromGraph` to avoid a
+            redundant double-write.
 
         :raises FileExistsError: If ``path`` already contains a
             non-empty ``manifest.yaml``.
@@ -274,23 +284,24 @@ class Project:
         created_at = datetime.now(timezone.utc).isoformat()
         proj_name = name or root.name
 
-        manifest : Dict[str, Any] = {
-            "name": proj_name,
-            "description": description,
-            "arclineSchemaVersion": MANIFEST_SCHEMA_VERSION,
-            "createdAt": created_at,
-            "updatedAt": created_at,
-            "defaultBackend": "networkx",
-        }
+        if persist:
+            manifest : Dict[str, Any] = {
+                "name": proj_name,
+                "description": description,
+                "arclineSchemaVersion": MANIFEST_SCHEMA_VERSION,
+                "createdAt": created_at,
+                "updatedAt": created_at,
+                "defaultBackend": "networkx",
+            }
 
-        with manifest_path.open("w", encoding = "utf-8") as fp:
-            yaml.safe_dump(
-                manifest, fp,
-                sort_keys = False, default_flow_style = False,
-            )
+            with manifest_path.open("w", encoding = "utf-8") as fp:
+                yaml.safe_dump(
+                    manifest, fp,
+                    sort_keys = False, default_flow_style = False,
+                )
 
-        to_json_records([], root / "nodes.json")
-        to_json_records([], root / "edges.json")
+            to_json_records([], root / "nodes.json")
+            to_json_records([], root / "edges.json")
 
         return cls(
             path = root,
@@ -420,6 +431,7 @@ class Project:
 
         proj = cls.init(
             path = path, name = name, description = description or "",
+            persist = False,
         )
         proj.nodes = list(graph.nodes)
         proj.edges = list(graph.edges)

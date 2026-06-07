@@ -19,7 +19,6 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-import pandas as pd
 import yaml
 
 from arcline.graph.base.edges import AbstractEdge
@@ -84,6 +83,7 @@ def __dropna__(row : Dict[str, Any]) -> Dict[str, Any]:
     """
 
     cleaned : Dict[str, Any] = {}
+    import pandas as pd
     for key, value in row.items():
         try:
             is_na = bool(pd.isna(value))
@@ -309,6 +309,7 @@ def from_parquet(
     :returns: ``(nodes, edges)`` lists.
     """
 
+    import pandas as pd
     nodes_df = pd.read_parquet(Path(nodes_path))
     edges_df = pd.read_parquet(Path(edges_path))
 
@@ -343,6 +344,7 @@ def from_csv(
     :returns: ``(nodes, edges)`` lists.
     """
 
+    import pandas as pd
     nodes_df = pd.read_csv(Path(nodes_path))
     edges_df = pd.read_csv(Path(edges_path))
 

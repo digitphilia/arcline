@@ -17,7 +17,6 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-import pandas as pd
 import yaml
 
 from arcline.graph.base.edges import AbstractEdge
@@ -219,6 +218,7 @@ def to_parquet(
     node_records = [__node_record__(node) for node in nodes]
     edge_records = [__edge_record__(edge) for edge in edges]
 
+    import pandas as pd
     pd.DataFrame(node_records).to_parquet(
         Path(nodes_path), index = False
     )

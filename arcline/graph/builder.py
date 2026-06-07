@@ -48,6 +48,8 @@ class NetworkBuilder:
 
         self._nodes : List[AbstractNode] = []
         self._edges : List[AbstractEdge] = []
+        self.__nodeKeys : set = set()
+        self.__edgeSignatures : set = set()
 
 
     def add(self, node : AbstractNode) -> AbstractNode:
@@ -64,13 +66,13 @@ class NetworkBuilder:
         :returns: The same ``node`` (so callers can chain or alias).
         """
 
-        for cur in self._nodes:
-            if cur.hashKey == node.hashKey:
-                raise ValueError(
-                    f"Duplicate node hashKey {node.hashKey!r}."
-                )
+        if node.hashKey in self.__nodeKeys:
+            raise ValueError(
+                f"Duplicate node hashKey {node.hashKey!r}."
+            )
 
         self._nodes.append(node)
+        self.__nodeKeys.add(node.hashKey)
         return node
 
 
@@ -148,14 +150,13 @@ class NetworkBuilder:
 
         srcKey = src.hashKey
         dstKey = dst.hashKey
-        keys = { node.hashKey for node in self._nodes }
 
-        if srcKey not in keys:
+        if srcKey not in self.__nodeKeys:
             raise ValueError(
                 f"Source node {srcKey!r} not registered with builder."
             )
 
-        if dstKey not in keys:
+        if dstKey not in self.__nodeKeys:
             raise ValueError(
                 f"Destination node {dstKey!r} not registered with "
                 f"builder."
@@ -163,16 +164,15 @@ class NetworkBuilder:
 
         edge = cls(srcNode = src, dstNode = dst, **fields)
 
-        for cur in self._edges:
-            if cur.hashKey == edge.hashKey \
-                    and cur.srcNode.hashKey == srcKey \
-                    and cur.dstNode.hashKey == dstKey:
-                raise ValueError(
-                    f"Duplicate edge hashKey {edge.hashKey!r} "
-                    f"between {srcKey!r} and {dstKey!r}."
-                )
+        signature = (edge.hashKey, srcKey, dstKey)
+        if signature in self.__edgeSignatures:
+            raise ValueError(
+                f"Duplicate edge hashKey {edge.hashKey!r} "
+                f"between {srcKey!r} and {dstKey!r}."
+            )
 
         self._edges.append(edge)
+        self.__edgeSignatures.add(signature)
         return edge
 
 

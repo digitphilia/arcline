@@ -167,6 +167,7 @@ class NetworkXGraph(AbstractGraph):
         self.G.add_node(
             node.hashKey, **node.model_dump(exclude = {"hashKey"})
         )
+        self.__invalidate_indices__()
 
 
     def addEdge(self, edge : AbstractEdge) -> None:
@@ -209,6 +210,7 @@ class NetworkXGraph(AbstractGraph):
             exclude = {"hashKey", "srcNode", "dstNode"}
         )
         self.G.add_edge(srcKey, dstKey, key = edge.hashKey, **attrs)
+        self.__invalidate_indices__()
 
 
     def updateNode(
@@ -261,6 +263,7 @@ class NetworkXGraph(AbstractGraph):
         self.G.nodes[node.hashKey].update(
             updated.model_dump(exclude = {"hashKey"})
         )
+        self.__invalidate_indices__()
 
         return updated
 
@@ -329,6 +332,7 @@ class NetworkXGraph(AbstractGraph):
         )
         self.G[srcKey][dstKey][edge.hashKey].clear()
         self.G[srcKey][dstKey][edge.hashKey].update(attrs)
+        self.__invalidate_indices__()
 
         return updated
 
@@ -361,6 +365,7 @@ class NetworkXGraph(AbstractGraph):
             if cur.srcNode.hashKey != node.hashKey
             and cur.dstNode.hashKey != node.hashKey
         ]
+        self.__invalidate_indices__()
 
 
     def hasNode(self, node : AbstractNode) -> bool:
@@ -404,6 +409,7 @@ class NetworkXGraph(AbstractGraph):
         self.edges = [
             cur for cur in self.edges if cur.hashKey != edge.hashKey
         ]
+        self.__invalidate_indices__()
 
 
     def hasEdge(

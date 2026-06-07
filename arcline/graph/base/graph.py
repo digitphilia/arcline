@@ -107,8 +107,39 @@ class AbstractGraph(ABC):
         self.nodes = nodes
         self.edges = edges
 
+        # ? lazy index caches; populated on first property access and
+        # invalidated by concrete-backend mutators via
+        # :meth:`__invalidate_indices__`.
+        self.__nodesByKeyCache : Optional[Dict[str, AbstractNode]] = None
+        self.__edgesByKeyCache : Optional[
+            Dict[str, Dict[Tuple[str, str], AbstractEdge]]
+        ] = None
+        self.__edgesByNodePairCache : Optional[
+            Dict[Tuple[str, str], str]
+        ] = None
+
         # name of the graph class; defaults to class name
         self.name = self.__set_name__(name = name)
+
+
+    def __invalidate_indices__(self) -> None:
+        """
+        Drop every cached lookup table so the next access of
+        :attr:`_nodesByKey`, :attr:`_edgesByKey` or
+        :attr:`_edgesByNodePair` rebuilds it from the current
+        :attr:`nodes` / :attr:`edges` lists.
+
+        :NOTE: Concrete backends must call this from every mutator
+        (``addNode``, ``updateNode``, ``removeNode``, ``addEdge``,
+        ``updateEdge``, ``removeEdge``) so the caches never drift
+        from the authoritative node and edge lists.
+
+        :rtype:   None
+        """
+
+        self.__nodesByKeyCache = None
+        self.__edgesByKeyCache = None
+        self.__edgesByNodePairCache = None
 
 
     @property
@@ -192,7 +223,11 @@ class AbstractGraph(ABC):
             the node attributes.
         """
 
-        return { node.hashKey : node for node in self.nodes }
+        cache = self.__nodesByKeyCache
+        if cache is None:
+            cache = { node.hashKey : node for node in self.nodes }
+            self.__nodesByKeyCache = cache
+        return cache
 
 
     @property
@@ -218,12 +253,16 @@ class AbstractGraph(ABC):
             as the key for the internal dictionary.
         """
 
-        return {
-            edge.hashKey : {
-                (edge.srcNode.hashKey, edge.dstNode.hashKey) : edge
+        cache = self.__edgesByKeyCache
+        if cache is None:
+            cache = {
+                edge.hashKey : {
+                    (edge.srcNode.hashKey, edge.dstNode.hashKey) : edge
+                }
+                for edge in self.edges
             }
-            for edge in self.edges
-        }
+            self.__edgesByKeyCache = cache
+        return cache
 
 
     @property
@@ -233,10 +272,14 @@ class AbstractGraph(ABC):
         keys and edges' hash key as the value.
         """
 
-        return {
-            list(edgeConfig.keys())[0] : edgeKey
-            for edgeKey, edgeConfig in self._edgesByKey.items()
-        }
+        cache = self.__edgesByNodePairCache
+        if cache is None:
+            cache = {
+                (edge.srcNode.hashKey, edge.dstNode.hashKey) : edge.hashKey
+                for edge in self.edges
+            }
+            self.__edgesByNodePairCache = cache
+        return cache
 
 
     @abstractmethod
