@@ -22,6 +22,19 @@ def makeFrame(values, start = "2024-01-01", periods = None) -> pd.DataFrame:
     })
 
 
+def test_distribution_dropsNanValues():
+    f = pd.DataFrame({"value": [1.0, 2.0, np.nan, 3.0, np.nan]})
+    out = distribution(f, bins = 3)
+    assert int(out["count"].sum()) == 3
+
+
+def test_distribution_allNanReturnsEmpty():
+    f = pd.DataFrame({"value": [np.nan, np.nan]})
+    out = distribution(f, bins = 5)
+    assert out.empty
+    assert list(out.columns) == ["binStart", "binEnd", "count"]
+
+
 def test_summary_emptyFrameReturnsZeroCount():
     out = summary(pd.DataFrame({"value": []}))
     assert out["count"] == 0

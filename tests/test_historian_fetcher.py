@@ -113,6 +113,12 @@ def test_readCache_returnsNoneOnMiss(tmp_path):
     assert readCache(tmp_path / "missing.parquet") is None
 
 
+def test_clearCache_hashKeyWithoutKindRaises(tmp_path):
+    from arcline.historian.exceptions import CacheError
+    with pytest.raises(CacheError):
+        clearCache(tmp_path, hashKey = "X")
+
+
 def test_clearCache_scoped(tmp_path):
     spec = makeSpec()
     for kind, key in [("lane", "E1"), ("lane", "E2"), ("plant", "P1")]:

@@ -98,7 +98,9 @@ def distribution(frame: Any, bins: int = 20) -> Any:
     pd = _importPandas()
     if frame.empty:
         return pd.DataFrame(columns = ["binStart", "binEnd", "count"])
-    series = frame["value"].astype(float)
+    series = frame["value"].astype(float).dropna()
+    if series.empty:
+        return pd.DataFrame(columns = ["binStart", "binEnd", "count"])
     if series.min() == series.max():
         v = float(series.iloc[0])
         return pd.DataFrame(
@@ -128,7 +130,4 @@ def resample(frame: Any, freq: ResampleFreq = "D", how: str = "mean") -> Any:
     pd = _importPandas()
     indexed = frame.set_index(pd.to_datetime(frame["ts"]))[["value"]]
     aggregated = indexed.resample(freq).agg(how).reset_index()
-    aggregated = aggregated.rename(columns = {"index": "ts"})
-    if "ts" not in aggregated.columns:
-        aggregated.insert(0, "ts", aggregated.index)
-    return aggregated
+    return aggregated.rename(columns = {"index": "ts"})

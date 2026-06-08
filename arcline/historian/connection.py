@@ -133,7 +133,10 @@ def testConnection(timeout: float = 5.0) -> bool:
 
     try:
         with engine.connect() as conn:
-            conn.execute(sqlalchemy.text("SELECT 1"))
+            stmt = sqlalchemy.text("SELECT 1").execution_options(
+                timeout = timeout,
+            )
+            conn.execute(stmt)
         return True
     except Exception as exc:
         _log.warning(

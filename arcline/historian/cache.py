@@ -93,6 +93,11 @@ def clearCache(
     * ``clearCache(project, kind="lane")``         -> all lanes
     * ``clearCache(project, "lane", "E-S1P1")``    -> one specific edge
     """
+    if hashKey and not kind:
+        raise CacheError(
+            "clearCache(hashKey=...) requires kind=... to scope the deletion; "
+            "passing hashKey without kind would silently no-op."
+        )
     root = cacheRoot(Path(projectPath))
     if kind:
         root = root / kind

@@ -82,8 +82,15 @@ def sync(
     skipCount = 0
     failCount = 0
 
+    entitiesByKind: dict = {}
     for kind, attribute, spec in catalog:
-        for entity in _entitiesOfKind(graph, kind):
+        if kind not in entitiesByKind:
+            entitiesByKind[kind] = list(_entitiesOfKind(graph, kind))
+        entities = entitiesByKind[kind]
+        if not entities:
+            skipCount += 1
+            continue
+        for entity in entities:
             try:
                 fetch(
                     projectPath = project, kind = kind,
@@ -98,8 +105,6 @@ def sync(
                     f"  FAIL {kind}/{entity.hashKey}/{attribute}: {exc}",
                     fg = typer.colors.YELLOW, err = True,
                 )
-        if not list(_entitiesOfKind(graph, kind)):
-            skipCount += 1
 
     typer.secho(
         f"sync complete: ok={okCount} fail={failCount} skipped-kinds={skipCount}",
