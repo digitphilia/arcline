@@ -11,7 +11,7 @@ via environment variables prefixed with ``ARCLINE_`` (for example,
 ``ARCLINE_HOST``, ``ARCLINE_PORT``) which keeps the dashboard
 12-factor friendly.
 
-The :func:`get_settings` convenience wrapper caches a single shared
+The :func:`getSettings` convenience wrapper caches a single shared
 :class:`DashboardSettings` instance for the lifetime of the process
 so that callers can read configuration without having to thread an
 explicit settings object through every helper.
@@ -62,14 +62,14 @@ class DashboardSettings(BaseSettings):
 
 
 @functools.lru_cache(maxsize = 1)
-def get_settings() -> DashboardSettings:
+def getSettings() -> DashboardSettings:
     """
     Return a process-wide cached :class:`DashboardSettings` instance.
 
     The first invocation constructs a fresh :class:`DashboardSettings`
     from environment variables; subsequent calls return the same
     cached object. Tests that need a clean settings snapshot should
-    call :func:`get_settings.cache_clear` before reading.
+    call :func:`getSettings.cache_clear` before reading.
 
     :rtype:   DashboardSettings
     :returns: The cached settings singleton.

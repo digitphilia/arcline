@@ -11,7 +11,7 @@ Dash application. The server is configured with a
 can be memoised across requests.
 
 A module-level :data:`_CACHE` slot exposes the active cache to other
-dashboard components through :func:`get_cache`; this avoids passing
+dashboard components through :func:`getCache`; this avoids passing
 the cache around as an explicit dependency to every callback module.
 
 :NOTE: The ``SECRET_KEY`` is sourced from the
@@ -29,11 +29,11 @@ from flask import Flask
 from flask_caching import Cache
 
 from arcline.dashboard.config import DashboardSettings
-from arcline.utils.logging import get_logger
+from arcline.utils.logging import getLogger
 
 
 _CACHE : Optional[Cache] = None
-_LOGGER = get_logger("arcline.dashboard.server")
+_LOGGER = getLogger("arcline.dashboard.server")
 
 
 def __resolve_cache_dir__(settings : DashboardSettings) -> Path:
@@ -61,13 +61,13 @@ def __resolve_cache_dir__(settings : DashboardSettings) -> Path:
     return target
 
 
-def create_server(settings : DashboardSettings) -> Flask:
+def createServer(settings : DashboardSettings) -> Flask:
     """
     Construct the Flask server that hosts the Dash app.
 
     Initialises a :class:`flask_caching.Cache` backed by the local
     filesystem, attaches it to the application, and exposes it via
-    :func:`get_cache` for other dashboard subsystems to share.
+    :func:`getCache` for other dashboard subsystems to share.
 
     :type  settings: DashboardSettings
     :param settings: Resolved dashboard settings driving cache and
@@ -92,12 +92,12 @@ def create_server(settings : DashboardSettings) -> Flask:
         )
     server.config["SECRET_KEY"] = secret
 
-    cache_dir = __resolve_cache_dir__(settings)
+    cacheDir = __resolve_cache_dir__(settings)
     cache = Cache(
         server,
         config = {
             "CACHE_TYPE": "FileSystemCache",
-            "CACHE_DIR": str(cache_dir),
+            "CACHE_DIR": str(cacheDir),
             "CACHE_DEFAULT_TIMEOUT": 300,
         },
     )
@@ -106,11 +106,11 @@ def create_server(settings : DashboardSettings) -> Flask:
     return server
 
 
-def get_cache() -> Cache:
+def getCache() -> Cache:
     """
     Return the active :class:`flask_caching.Cache` instance.
 
-    :raises RuntimeError: If :func:`create_server` has not yet been
+    :raises RuntimeError: If :func:`createServer` has not yet been
         called in the current process.
 
     :rtype:   Cache
@@ -119,7 +119,7 @@ def get_cache() -> Cache:
 
     if _CACHE is None:
         raise RuntimeError(
-            "Flask cache not initialised; call create_server() first."
+            "Flask cache not initialised; call createServer() first."
         )
 
     return _CACHE

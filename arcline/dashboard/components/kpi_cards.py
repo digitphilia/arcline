@@ -91,7 +91,7 @@ def __kind_counts__(graph : AbstractGraph) -> Dict[str, int]:
     return counts
 
 
-def make_kpi_strip(graph : AbstractGraph) -> dbc.Row:
+def makeKpiStrip(graph : AbstractGraph) -> dbc.Row:
     """
     Build the KPI strip row.
 

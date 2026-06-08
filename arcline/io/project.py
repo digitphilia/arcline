@@ -9,7 +9,7 @@ project on disk. It owns the canonical project layout
 (``manifest.yaml``, ``nodes.json``, ``edges.json``, plus a few
 auxiliary directories), delegates serialisation to the readers and
 writers in :mod:`arcline.io`, and runs cross-file integrity checks
-through :func:`arcline.io.validators.validate_project` on every load.
+through :func:`arcline.io.validators.validateProject` on every load.
 
 Constructors:
 
@@ -36,14 +36,14 @@ from arcline.graph.backends.networkx import NetworkXGraph
 from arcline.graph.base.edges import AbstractEdge
 from arcline.graph.base.graph import AbstractGraph
 from arcline.graph.base.nodes import AbstractNode
-from arcline.io.readers import __build_edge__, __build_node__
+from arcline.io.readers import __buildEdge__, __buildNode__
 from arcline.io.schema import MANIFEST_SCHEMA_VERSION
-from arcline.io.validators import ValidationIssue, validate_project
+from arcline.io.validators import ValidationIssue, validateProject
 from arcline.io.writers import (
-    _build_payload,
-    __edge_record__,
-    __node_record__,
-    to_json_records,
+    _buildPayload,
+    __edgeRecord__,
+    __nodeRecord__,
+    toJsonRecords,
 )
 
 
@@ -54,8 +54,8 @@ _GITIGNORE_BODY : str = (
 )
 
 
-def __extract_records__(
-        payload : Any, key : str, file_path : Path
+def __extractRecords__(
+        payload : Any, key : str, filePath : Path
 ) -> List[Dict[str, Any]]:
     """
     Normalise the parsed JSON payload of a ``nodes.json`` or
@@ -74,8 +74,8 @@ def __extract_records__(
     :param key: Envelope key to extract when ``payload`` is a dict
         (``"nodes"`` or ``"edges"``).
 
-    :type  file_path: Path
-    :param file_path: Source file path; included in error messages.
+    :type  filePath: Path
+    :param filePath: Source file path; included in error messages.
 
     :raises ValueError: If ``payload`` is neither a list nor a dict
         with the requested key, or if the extracted value is not a
@@ -94,37 +94,37 @@ def __extract_records__(
         records = payload.get(key)
         if records is None:
             raise ValueError(
-                f"Field {key!r} in {file_path} is explicitly null; "
+                f"Field {key!r} in {filePath} is explicitly null; "
                 f"use an empty array [] instead."
             )
         if not isinstance(records, list):
             raise ValueError(
                 f"Expected {key!r} to be a JSON array in "
-                f"{file_path}, got {type(records).__name__}."
+                f"{filePath}, got {type(records).__name__}."
             )
         return records
 
     raise ValueError(
-        f"Unsupported JSON payload shape in {file_path}: expected "
+        f"Unsupported JSON payload shape in {filePath}: expected "
         f"a list or an envelope dict with {key!r} key, got "
         f"{type(payload).__name__}."
     )
 
 
-def __assemble_records__(
-        raw_nodes : List[Dict[str, Any]],
-        raw_edges : List[Dict[str, Any]]
+def __assembleRecords__(
+        rawNodes : List[Dict[str, Any]],
+        rawEdges : List[Dict[str, Any]]
 ) -> tuple:
     """
     Deserialise raw record dictionaries into pydantic-validated
     :class:`AbstractNode` and :class:`AbstractEdge` instances using
     the registry-driven helpers in :mod:`arcline.io.readers`.
 
-    :type  raw_nodes: List[Dict[str, Any]]
-    :param raw_nodes: Raw node dictionaries.
+    :type  rawNodes: List[Dict[str, Any]]
+    :param rawNodes: Raw node dictionaries.
 
-    :type  raw_edges: List[Dict[str, Any]]
-    :param raw_edges: Raw edge dictionaries.
+    :type  rawEdges: List[Dict[str, Any]]
+    :param rawEdges: Raw edge dictionaries.
 
     :raises KeyError: If a record is missing required fields or
         references an unknown ``hashKey`` endpoint.
@@ -136,13 +136,13 @@ def __assemble_records__(
     """
 
     nodes : List[AbstractNode] = [
-        __build_node__(rec) for rec in raw_nodes
+        __buildNode__(rec) for rec in rawNodes
     ]
-    nodes_by_key : Dict[str, AbstractNode] = {
+    nodesByKey : Dict[str, AbstractNode] = {
         node.hashKey : node for node in nodes
     }
     edges : List[AbstractEdge] = [
-        __build_edge__(rec, nodes_by_key) for rec in raw_edges
+        __buildEdge__(rec, nodesByKey) for rec in rawEdges
     ]
 
     return nodes, edges
@@ -267,8 +267,8 @@ class Project:
         root = Path(path).resolve()
         root.mkdir(parents = True, exist_ok = True)
 
-        manifest_path = root / "manifest.yaml"
-        if manifest_path.exists() and manifest_path.stat().st_size > 0:
+        manifestPath = root / "manifest.yaml"
+        if manifestPath.exists() and manifestPath.stat().st_size > 0:
             raise FileExistsError(
                 f"Project already initialised at {root}; refusing "
                 f"to overwrite an existing manifest.yaml."
@@ -281,37 +281,37 @@ class Project:
         if not gitignore.exists():
             gitignore.write_text(_GITIGNORE_BODY, encoding = "utf-8")
 
-        created_at = datetime.now(timezone.utc).isoformat()
-        proj_name = name or root.name
+        createdAt = datetime.now(timezone.utc).isoformat()
+        projName = name or root.name
 
         if persist:
             manifest : Dict[str, Any] = {
-                "name": proj_name,
+                "name": projName,
                 "description": description,
                 "arclineSchemaVersion": MANIFEST_SCHEMA_VERSION,
-                "createdAt": created_at,
-                "updatedAt": created_at,
+                "createdAt": createdAt,
+                "updatedAt": createdAt,
                 "defaultBackend": "networkx",
             }
 
-            with manifest_path.open("w", encoding = "utf-8") as fp:
+            with manifestPath.open("w", encoding = "utf-8") as fp:
                 yaml.safe_dump(
                     manifest, fp,
                     sort_keys = False, default_flow_style = False,
                 )
 
-            to_json_records([], root / "nodes.json")
-            to_json_records([], root / "edges.json")
+            toJsonRecords([], root / "nodes.json")
+            toJsonRecords([], root / "edges.json")
 
         return cls(
             path = root,
-            name = proj_name,
+            name = projName,
             description = description,
             schemaVersion = MANIFEST_SCHEMA_VERSION,
             nodes = [],
             edges = [],
-            createdAt = created_at,
-            updatedAt = created_at,
+            createdAt = createdAt,
+            updatedAt = createdAt,
         )
 
 
@@ -321,10 +321,10 @@ class Project:
         Load an existing project from disk and validate it.
 
         The manifest is parsed, raw node and edge dictionaries are
-        run through :func:`validate_project`, and any
+        run through :func:`validateProject`, and any
         ``error``-severity issue raises :class:`ValueError`. On
         success the records are deserialised through
-        :func:`from_json`.
+        :func:`fromJson`.
 
         :type  path: Union[Path, str]
         :param path: Path to the project root directory.
@@ -338,34 +338,34 @@ class Project:
         """
 
         root = Path(path).resolve()
-        manifest_path = root / "manifest.yaml"
-        nodes_path = root / "nodes.json"
-        edges_path = root / "edges.json"
+        manifestPath = root / "manifest.yaml"
+        nodesPath = root / "nodes.json"
+        edgesPath = root / "edges.json"
 
-        for required in (manifest_path, nodes_path, edges_path):
+        for required in (manifestPath, nodesPath, edgesPath):
             if not required.exists():
                 raise FileNotFoundError(
                     f"Project file missing: {required}"
                 )
 
-        with manifest_path.open("r", encoding = "utf-8") as fp:
+        with manifestPath.open("r", encoding = "utf-8") as fp:
             manifest = yaml.safe_load(fp) or {}
 
-        with nodes_path.open("r", encoding = "utf-8") as fp:
-            nodes_payload = json.load(fp)
+        with nodesPath.open("r", encoding = "utf-8") as fp:
+            nodesPayload = json.load(fp)
 
-        with edges_path.open("r", encoding = "utf-8") as fp:
-            edges_payload = json.load(fp)
+        with edgesPath.open("r", encoding = "utf-8") as fp:
+            edgesPayload = json.load(fp)
 
-        raw_nodes = __extract_records__(
-            nodes_payload, "nodes", nodes_path,
+        rawNodes = __extractRecords__(
+            nodesPayload, "nodes", nodesPath,
         )
-        raw_edges = __extract_records__(
-            edges_payload, "edges", edges_path,
+        rawEdges = __extractRecords__(
+            edgesPayload, "edges", edgesPath,
         )
 
-        issues = validate_project(
-            nodes = raw_nodes, edges = raw_edges, manifest = manifest,
+        issues = validateProject(
+            nodes = rawNodes, edges = rawEdges, manifest = manifest,
         )
         errors = [i for i in issues if i.severity == "error"]
         if errors:
@@ -377,11 +377,11 @@ class Project:
             )
 
         try:
-            nodes, edges = __assemble_records__(raw_nodes, raw_edges)
+            nodes, edges = __assembleRecords__(rawNodes, rawEdges)
         except (KeyError, ValueError) as exc:
             raise ValueError(
                 f"Project at {root} failed to deserialise records "
-                f"(nodes: {nodes_path}, edges: {edges_path}): {exc}"
+                f"(nodes: {nodesPath}, edges: {edgesPath}): {exc}"
             ) from exc
 
         return cls(
@@ -467,11 +467,11 @@ class Project:
                 sort_keys = False, default_flow_style = False,
             )
 
-        node_records = [__node_record__(node) for node in self.nodes]
-        edge_records = [__edge_record__(edge) for edge in self.edges]
+        nodeRecords = [__nodeRecord__(node) for node in self.nodes]
+        edgeRecords = [__edgeRecord__(edge) for edge in self.edges]
 
-        to_json_records(node_records, self.path / "nodes.json")
-        to_json_records(edge_records, self.path / "edges.json")
+        toJsonRecords(nodeRecords, self.path / "nodes.json")
+        toJsonRecords(edgeRecords, self.path / "edges.json")
 
 
     def toGraph(self, backend : str = "networkx") -> AbstractGraph:
@@ -502,14 +502,14 @@ class Project:
         Re-run cross-file integrity checks on the current in-memory
         state by serialising to an in-memory JSON buffer and
         re-loading the raw dictionaries through
-        :func:`validate_project`.
+        :func:`validateProject`.
 
         :rtype:   List[ValidationIssue]
         :returns: Aggregated validation issues; empty when clean.
         """
 
         buffer = _io.StringIO()
-        payload = _build_payload(self.nodes, self.edges)
+        payload = _buildPayload(self.nodes, self.edges)
         json.dump(payload, buffer, default = str)
         buffer.seek(0)
         reloaded = json.loads(buffer.getvalue())
@@ -522,7 +522,7 @@ class Project:
             "updatedAt": self.updatedAt,
         }
 
-        return validate_project(
+        return validateProject(
             nodes = reloaded.get("nodes", []),
             edges = reloaded.get("edges", []),
             manifest = manifest,

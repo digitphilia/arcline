@@ -5,8 +5,8 @@ Structured Logging Configuration
 --------------------------------
 
 Process-wide logging helpers used across the :mod:`arcline` package.
-The :func:`configure_logging` entry point is idempotent and safe to
-call multiple times; :func:`get_logger` lazily triggers a default
+The :func:`configureLogging` entry point is idempotent and safe to
+call multiple times; :func:`getLogger` lazily triggers a default
 configuration the first time a logger is requested.
 
 A small :class:`CredentialsRedactor` filter is wired into the root
@@ -33,7 +33,7 @@ class JsonFormatter(logging.Formatter):
     """
     Minimal JSON line formatter emitting ``{"ts", "level", "name",
     "msg"}`` records on a single line. Used when
-    :func:`configure_logging` is called with ``json=True`` for
+    :func:`configureLogging` is called with ``json=True`` for
     log-aggregator-friendly output.
     """
 
@@ -96,7 +96,7 @@ class CredentialsRedactor(logging.Filter):
         return True
 
 
-def configure_logging(level : str = "INFO", json : bool = False) -> None:
+def configureLogging(level : str = "INFO", json : bool = False) -> None:
     """
     Idempotent root-logger configuration. Safe to call multiple
     times in a single process; subsequent calls are no-ops unless
@@ -122,8 +122,8 @@ def configure_logging(level : str = "INFO", json : bool = False) -> None:
     if _CONFIGURED:
         return
 
-    env_level = os.environ.get("ARCLINE_LOG_LEVEL")
-    effective : str = env_level.upper() if env_level else level.upper()
+    envLevel = os.environ.get("ARCLINE_LOG_LEVEL")
+    effective : str = envLevel.upper() if envLevel else level.upper()
 
     root = logging.getLogger()
     root.setLevel(getattr(logging, effective, logging.INFO))
@@ -141,10 +141,10 @@ def configure_logging(level : str = "INFO", json : bool = False) -> None:
     _CONFIGURED = True
 
 
-def get_logger(name : str) -> logging.Logger:
+def getLogger(name : str) -> logging.Logger:
     """
     Return a child logger by name, lazily triggering a default
-    :func:`configure_logging` call if the root logger has not been
+    :func:`configureLogging` call if the root logger has not been
     configured yet.
 
     :type  name: str
@@ -156,7 +156,7 @@ def get_logger(name : str) -> logging.Logger:
     """
 
     if not _CONFIGURED:
-        configure_logging()
+        configureLogging()
 
     return logging.getLogger(name)
 
@@ -164,7 +164,7 @@ def get_logger(name : str) -> logging.Logger:
 def __reset_for_tests__() -> None:
     """
     Reset the module-level ``_CONFIGURED`` sentinel so that test
-    fixtures can re-exercise :func:`configure_logging`. Production
+    fixtures can re-exercise :func:`configureLogging`. Production
     code should not need this hook.
 
     :rtype:   None

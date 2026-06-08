@@ -16,11 +16,11 @@ try:
     import dash_bootstrap_components as dbc
     import plotly  # noqa: F401
 
-    from arcline.dashboard.app import create_app
-    from arcline.dashboard.components.kpi_cards import make_kpi_strip
-    from arcline.dashboard.components.node_form import make_node_form
-    from arcline.dashboard.viz.layouts import compute_layout
-    from arcline.dashboard.viz.plotly_graph import build_figure
+    from arcline.dashboard.app import createApp
+    from arcline.dashboard.components.kpi_cards import makeKpiStrip
+    from arcline.dashboard.components.node_form import makeNodeForm
+    from arcline.dashboard.viz.layouts import computeLayout
+    from arcline.dashboard.viz.plotly_graph import buildFigure
 except ImportError:
     pytest.skip(
         "dashboard extras not installed", allow_module_level = True,
@@ -48,49 +48,49 @@ def _iter_children(node):
 
 
 def test_create_app_without_project() -> None:
-    app = create_app()
+    app = createApp()
     assert app is not None
     assert app.layout is not None
 
 
-def test_create_app_with_project(sample_project) -> None:
-    app = create_app(projectPath = sample_project.path)
+def test_create_app_with_project(sampleProject) -> None:
+    app = createApp(projectPath = sampleProject.path)
     from dash import html
 
     assert isinstance(app.layout, html.Div)
 
 
 def test_node_form_renders_inputs_per_field() -> None:
-    form = make_node_form("supplier")
+    form = makeNodeForm("supplier")
     from dash import dcc
 
-    input_like = (dbc.Input, dbc.Select, dbc.Switch, dcc.Input)
+    inputLike = (dbc.Input, dbc.Select, dbc.Switch, dcc.Input)
     inputs = [
         component for component in _iter_children(form)
-        if isinstance(component, input_like)
+        if isinstance(component, inputLike)
     ]
     assert len(inputs) >= 3
 
 
-def test_kpi_strip_renders_for_graph(sample_graph) -> None:
-    row = make_kpi_strip(sample_graph)
+def test_kpi_strip_renders_for_graph(sampleGraph) -> None:
+    row = makeKpiStrip(sampleGraph)
     assert isinstance(row, dbc.Row)
 
     cards = [
         component for component in _iter_children(row)
         if isinstance(component, dbc.Col)
     ]
-    distinct_kinds = { type(node).kind for node in sample_graph.nodes }
-    assert len(cards) >= 2 + len(distinct_kinds)
+    distinctKinds = { type(node).kind for node in sampleGraph.nodes }
+    assert len(cards) >= 2 + len(distinctKinds)
 
 
-def test_visualize_layouts(sample_graph) -> None:
+def test_visualize_layouts(sampleGraph) -> None:
     for mode in ("spring", "tiered", "geo"):
-        layout = compute_layout(sample_graph, mode = mode)
+        layout = computeLayout(sampleGraph, mode = mode)
         assert isinstance(layout, dict)
-        assert len(layout) == sample_graph.numNodes
+        assert len(layout) == sampleGraph.numNodes
 
 
-def test_build_figure_runs(sample_graph) -> None:
-    fig = build_figure(sample_graph, mode = "spring")
+def test_build_figure_runs(sampleGraph) -> None:
+    fig = buildFigure(sampleGraph, mode = "spring")
     assert fig.data

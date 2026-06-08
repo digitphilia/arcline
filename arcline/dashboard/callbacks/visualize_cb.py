@@ -16,7 +16,7 @@ from dash import Dash, Input, Output, html, no_update
 
 from arcline.dashboard.state import session
 from arcline.dashboard.state.store import STORE_GRAPH_DIRTY
-from arcline.dashboard.viz import build_figure
+from arcline.dashboard.viz import buildFigure
 
 
 def __point_to_payload__(
@@ -37,10 +37,10 @@ def __point_to_payload__(
     if not text:
         return None
 
-    if not session.is_bound():
+    if not session.isBound():
         return None
 
-    graph = session.get_graph()
+    graph = session.getGraph()
     for node in graph.nodes:
         if node.name == text or node.hashKey == text:
             return {"type": type(node).kind, **node.model_dump()}
@@ -86,31 +86,31 @@ def register(app : Dash) -> None:
         Input(STORE_GRAPH_DIRTY, "data"),
         prevent_initial_call = False,
     )
-    def refresh_figure(mode : Optional[str], dirty : Any) -> Any:
+    def refreshFigure(mode : Optional[str], dirty : Any) -> Any:
         """
         Rebuild the network figure when either the layout mode or
         the graph-dirty tick changes.
         """
 
-        if not session.is_bound():
+        if not session.isBound():
             return no_update
 
-        return build_figure(session.get_graph(), mode = mode or "spring")
+        return buildFigure(session.getGraph(), mode = mode or "spring")
 
     @app.callback(
         Output("viz-selected-panel", "children"),
         Input("viz-graph", "clickData"),
         prevent_initial_call = True,
     )
-    def show_selected(click_data : Optional[Dict[str, Any]]) -> Any:
+    def showSelected(clickData : Optional[Dict[str, Any]]) -> Any:
         """
         Surface attributes of the clicked entity in the side panel.
         """
 
-        if not click_data:
+        if not clickData:
             return no_update
 
-        points = click_data.get("points") or []
+        points = clickData.get("points") or []
         if not points:
             return no_update
 

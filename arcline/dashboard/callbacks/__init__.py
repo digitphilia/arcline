@@ -4,8 +4,8 @@
 Dashboard Callbacks Registry
 ============================
 
-Single entry point (:func:`register_all`) used by
-:func:`arcline.dashboard.app.create_app` to wire all per-page
+Single entry point (:func:`registerAll`) used by
+:func:`arcline.dashboard.app.createApp` to wire all per-page
 callbacks against the :class:`dash.Dash` instance.
 
 The actual callback definitions live in sibling modules
@@ -17,7 +17,7 @@ dashboard is actually instantiated.
 from dash import Dash
 
 
-def register_all(app : Dash) -> None:
+def registerAll(app : Dash) -> None:
     """
     Register every callback module against ``app``.
 
@@ -29,15 +29,15 @@ def register_all(app : Dash) -> None:
     """
 
     from arcline.dashboard.callbacks.nodes_cb import (
-        register as register_nodes,
+        register as registerNodes,
     )
     from arcline.dashboard.callbacks.edges_cb import (
-        register as register_edges,
+        register as registerEdges,
     )
     from arcline.dashboard.callbacks.visualize_cb import (
-        register as register_viz,
+        register as registerViz,
     )
 
-    register_nodes(app)
-    register_edges(app)
-    register_viz(app)
+    registerNodes(app)
+    registerEdges(app)
+    registerViz(app)

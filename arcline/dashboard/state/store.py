@@ -9,7 +9,7 @@ the dashboard layout. Putting the IDs here (instead of inlining them
 in each page) lets callbacks reference a single canonical constant
 and keeps the front-end / back-end contract explicit.
 
-The two thin helpers (:func:`serialize_meta` / :func:`deserialize_meta`)
+The two thin helpers (:func:`serializeMeta` / :func:`deserializeMeta`)
 wrap :func:`json.dumps` / :func:`json.loads` so callers can round-trip
 arbitrary JSON-serialisable mapping payloads through a store slot.
 """
@@ -36,7 +36,7 @@ ALL_STORES : list = [
 ]
 
 
-def serialize_meta(meta : Dict[str, Any]) -> str:
+def serializeMeta(meta : Dict[str, Any]) -> str:
     """
     Serialise a metadata mapping into a compact JSON string suitable
     for a ``dcc.Store`` slot.
@@ -51,14 +51,14 @@ def serialize_meta(meta : Dict[str, Any]) -> str:
     return json.dumps(meta, default = str)
 
 
-def deserialize_meta(raw : Optional[str]) -> Dict[str, Any]:
+def deserializeMeta(raw : Optional[str]) -> Dict[str, Any]:
     """
     Deserialise a JSON-encoded metadata mapping coming back from a
     ``dcc.Store`` slot.
 
     :type  raw: Optional[str]
     :param raw: The raw JSON string previously emitted by
-        :func:`serialize_meta`; treated as an empty mapping when
+        :func:`serializeMeta`; treated as an empty mapping when
         ``None`` or empty.
 
     :rtype:   Dict[str, Any]

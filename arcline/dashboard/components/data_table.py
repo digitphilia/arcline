@@ -7,7 +7,7 @@ Data Table Components for Nodes and Edges
 Wraps :mod:`dash_ag_grid` (when installed) or falls back to
 :class:`dash.dash_table.DataTable` to render the project's node and
 edge tables. Both tables share the same row shape produced by the
-:func:`arcline.io.writers.__node_record__` and ``__edge_record__``
+:func:`arcline.io.writers.__nodeRecord__` and ``__edgeRecord__``
 helpers - this keeps the on-disk JSON, the dashboard table, and any
 future bulk-edit affordances aligned.
 """
@@ -114,7 +114,7 @@ def __columns_from_rows__(
 def __build_grid__(
         rows : List[Dict[str, Any]],
         columns : List[str],
-        table_id : str
+        tableId : str
 ) -> Any:
     """
     Build either an ag-grid or a fallback :class:`dash_table.DataTable`
@@ -126,8 +126,8 @@ def __build_grid__(
     :type  columns: List[str]
     :param columns: Column order.
 
-    :type  table_id: str
-    :param table_id: DOM id assigned to the rendered component.
+    :type  tableId: str
+    :param tableId: DOM id assigned to the rendered component.
 
     :rtype:   Any
     :returns: A Dash component instance ready for inclusion in a
@@ -140,7 +140,7 @@ def __build_grid__(
             for col in columns
         ]
         return dag.AgGrid(
-            id = table_id, rowData = rows, columnDefs = column_defs,
+            id = tableId, rowData = rows, columnDefs = column_defs,
             defaultColDef = {"resizable": True, "minWidth": 120},
             dashGridOptions = {
                 "rowSelection": "single", "animateRows": True,
@@ -149,7 +149,7 @@ def __build_grid__(
         )
 
     return dash_table.DataTable(
-        id = table_id, data = rows,
+        id = tableId, data = rows,
         columns = [{"name": c, "id": c} for c in columns],
         row_selectable = "single", page_size = 25,
         style_table = {"overflowX": "auto"},
@@ -157,8 +157,8 @@ def __build_grid__(
     )
 
 
-def make_node_table(
-        graph : AbstractGraph, table_id : str = "node-table"
+def makeNodeTable(
+        graph : AbstractGraph, tableId : str = "node-table"
 ) -> Any:
     """
     Build the project's node table component.
@@ -166,8 +166,8 @@ def make_node_table(
     :type  graph: AbstractGraph
     :param graph: The live backend graph providing the row data.
 
-    :type  table_id: str
-    :param table_id: DOM id assigned to the rendered table.
+    :type  tableId: str
+    :param tableId: DOM id assigned to the rendered table.
 
     :rtype:   Any
     :returns: A Dash table component instance.
@@ -175,11 +175,11 @@ def make_node_table(
 
     rows = __node_rows__(graph)
     columns = __columns_from_rows__(rows, _NODE_BASE_COLUMNS)
-    return __build_grid__(rows, columns, table_id)
+    return __build_grid__(rows, columns, tableId)
 
 
-def make_edge_table(
-        graph : AbstractGraph, table_id : str = "edge-table"
+def makeEdgeTable(
+        graph : AbstractGraph, tableId : str = "edge-table"
 ) -> Any:
     """
     Build the project's edge table component.
@@ -187,8 +187,8 @@ def make_edge_table(
     :type  graph: AbstractGraph
     :param graph: The live backend graph providing the row data.
 
-    :type  table_id: str
-    :param table_id: DOM id assigned to the rendered table.
+    :type  tableId: str
+    :param tableId: DOM id assigned to the rendered table.
 
     :rtype:   Any
     :returns: A Dash table component instance.
@@ -196,4 +196,4 @@ def make_edge_table(
 
     rows = __edge_rows__(graph)
     columns = __columns_from_rows__(rows, _EDGE_BASE_COLUMNS)
-    return __build_grid__(rows, columns, table_id)
+    return __build_grid__(rows, columns, tableId)

@@ -71,16 +71,16 @@ def __tiered_layout__(
     :returns: ``hashKey -> (x, y)`` coordinate mapping.
     """
 
-    kind_by_key = {node.hashKey: type(node).kind for node in graph.nodes}
-    sub_graph = graph.G.copy()
-    for hash_key in sub_graph.nodes:
-        kind = kind_by_key.get(hash_key, "")
-        sub_graph.nodes[hash_key]["subset"] = _TIER_BY_KIND.get(
+    kindByKey = {node.hashKey: type(node).kind for node in graph.nodes}
+    subGraph = graph.G.copy()
+    for hashKey in subGraph.nodes:
+        kind = kindByKey.get(hashKey, "")
+        subGraph.nodes[hashKey]["subset"] = _TIER_BY_KIND.get(
             kind, _DEFAULT_TIER
         )
 
     positions = networkx.multipartite_layout(
-        sub_graph, subset_key = "subset"
+        subGraph, subsetKey = "subset"
     )
     return {
         str(key): (float(pos[0]), float(pos[1]))
@@ -113,7 +113,7 @@ def __geo_layout__(
     return positions
 
 
-def compute_layout(
+def computeLayout(
         graph : AbstractGraph, mode : LayoutMode = "spring"
 ) -> Dict[str, Tuple[float, float]]:
     """

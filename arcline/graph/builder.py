@@ -101,7 +101,7 @@ class NetworkBuilder:
         """
 
         # ..versionchanged:: <today> Auto Hash Key Generation
-        # TODO: when arcline.utils.hashing.make_key lands, allow
+        # TODO: when arcline.utils.hashing.makeKey lands, allow
         # callers to omit ``hashKey`` and synthesise one here.
         cls = resolve_node(kind)
         return self.add(cls(**fields))

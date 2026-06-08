@@ -10,14 +10,14 @@ the dashboard's ``/dashboard/visualize`` page. Two abstract layouts
 OpenStreetMap tile background) are supported.
 """
 
-from arcline.dashboard.viz.layouts import LayoutMode, compute_layout
-from arcline.dashboard.viz.plotly_graph import build_figure
-from arcline.dashboard.viz.styles import kind_color, kind_icon
+from arcline.dashboard.viz.layouts import LayoutMode, computeLayout
+from arcline.dashboard.viz.plotly_graph import buildFigure
+from arcline.dashboard.viz.styles import kindColor, kindIcon
 
 __all__ = [
     "LayoutMode",
-    "compute_layout",
-    "build_figure",
-    "kind_color",
-    "kind_icon",
+    "computeLayout",
+    "buildFigure",
+    "kindColor",
+    "kindIcon",
 ]

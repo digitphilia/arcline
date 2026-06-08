@@ -7,14 +7,14 @@ Nodes Page
 CRUD page for the project's node list. Shows the KPI strip and a
 table of every node along with an "Add Node" button that opens a
 modal containing a kind picker and the dynamically-rendered
-:func:`make_node_form`.
+:func:`makeNodeForm`.
 """
 
 import dash
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-from arcline.dashboard.components import make_kpi_strip, make_node_table
+from arcline.dashboard.components import makeKpiStrip, makeNodeTable
 from arcline.dashboard.state import session
 from arcline.graph.registry import iter_nodes
 
@@ -49,8 +49,8 @@ def __bound_layout__() -> html.Div:
     :returns: Nodes page contents.
     """
 
-    graph = session.get_graph()
-    kind_options = [
+    graph = session.getGraph()
+    kindOptions = [
         {"label": kind, "value": kind} for kind, _ in iter_nodes()
     ]
 
@@ -81,9 +81,9 @@ def __bound_layout__() -> html.Div:
                     dbc.Label("Kind"),
                     dcc.Dropdown(
                         id = "node-kind-select",
-                        options = kind_options,
-                        value = kind_options[0]["value"]
-                        if kind_options else None,
+                        options = kindOptions,
+                        value = kindOptions[0]["value"]
+                        if kindOptions else None,
                         clearable = False, className = "mb-3",
                     ),
                     html.Div(id = "node-form-area"),
@@ -95,9 +95,9 @@ def __bound_layout__() -> html.Div:
 
     return html.Div(
         [
-            make_kpi_strip(graph),
+            makeKpiStrip(graph),
             toolbar,
-            make_node_table(graph),
+            makeNodeTable(graph),
             modal,
         ],
         className = "p-3",
@@ -112,7 +112,7 @@ def layout() -> html.Div:
     :returns: The page contents.
     """
 
-    if not session.is_bound():
+    if not session.isBound():
         return __no_project_layout__()
 
     return __bound_layout__()

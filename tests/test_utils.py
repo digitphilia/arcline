@@ -14,23 +14,23 @@ import logging
 import pytest
 
 from arcline.utils.geo import bbox, haversine
-from arcline.utils.hashing import make_edge_key, make_key, make_node_key
+from arcline.utils.hashing import makeEdgeKey, makeKey, makeNodeKey
 from arcline.utils.logging import (
     CredentialsRedactor,
     __reset_for_tests__,
-    configure_logging,
+    configureLogging,
 )
 
 
 def test_make_key_deterministic() -> None:
-    a = make_key("supplier", "Acme")
-    b = make_key("supplier", "Acme")
+    a = makeKey("supplier", "Acme")
+    b = makeKey("supplier", "Acme")
     assert a == b
 
 
 def test_make_node_vs_edge_prefix() -> None:
-    assert make_node_key("supplier", "Acme").startswith("N-")
-    assert make_edge_key("lane", "A", "B").startswith("E-")
+    assert makeNodeKey("supplier", "Acme").startswith("N-")
+    assert makeEdgeKey("lane", "A", "B").startswith("E-")
 
 
 def test_haversine_known_distance() -> None:
@@ -56,8 +56,8 @@ def test_bbox_empty_raises() -> None:
 
 def test_logging_idempotent() -> None:
     __reset_for_tests__()
-    configure_logging()
-    configure_logging()
+    configureLogging()
+    configureLogging()
 
 
 def test_credentials_redactor_scrubs_dsn() -> None:
@@ -78,7 +78,7 @@ def test_credentials_redactor_attached_to_handler(capsys) -> None:
     """Regression: redactor must scrub logs from CHILD loggers too."""
 
     __reset_for_tests__()
-    configure_logging()
+    configureLogging()
 
     child = logging.getLogger("arcline.x")
     child.warning("opening mssql+pyodbc://u:p@host/db now")

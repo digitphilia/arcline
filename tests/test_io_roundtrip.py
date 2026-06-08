@@ -18,12 +18,12 @@ import pytest
 from arcline.graph.library import Customer, Plant, Supplier
 from arcline.io import (
     Project,
-    from_csv,
-    from_parquet,
-    from_yaml,
-    to_parquet,
-    to_yaml,
-    validate_project,
+    fromCsv,
+    fromParquet,
+    fromYaml,
+    toParquet,
+    toYaml,
+    validateProject,
 )
 
 
@@ -35,22 +35,22 @@ def _manifest() -> Dict[str, Any]:
     }
 
 
-def test_save_and_open_roundtrip(sample_project : Project) -> None:
-    reopened = Project.open(sample_project.path)
+def test_save_and_open_roundtrip(sampleProject : Project) -> None:
+    reopened = Project.open(sampleProject.path)
     graph = reopened.toGraph()
 
-    assert len(reopened.nodes) == len(sample_project.nodes)
-    assert len(reopened.edges) == len(sample_project.edges)
+    assert len(reopened.nodes) == len(sampleProject.nodes)
+    assert len(reopened.edges) == len(sampleProject.edges)
     assert graph.numNodes == 3
     assert graph.numEdges == 2
 
-    orig_kinds = [type(n).kind for n in sample_project.nodes]
-    new_kinds = [type(n).kind for n in reopened.nodes]
-    assert orig_kinds == new_kinds
+    origKinds = [type(n).kind for n in sampleProject.nodes]
+    newKinds = [type(n).kind for n in reopened.nodes]
+    assert origKinds == newKinds
 
 
-def test_typed_classes_preserved(sample_project : Project) -> None:
-    reopened = Project.open(sample_project.path)
+def test_typed_classes_preserved(sampleProject : Project) -> None:
+    reopened = Project.open(sampleProject.path)
     classes = {type(node) for node in reopened.nodes}
 
     assert classes.issubset({Supplier, Plant, Customer})
@@ -60,48 +60,48 @@ def test_typed_classes_preserved(sample_project : Project) -> None:
 
 
 def test_validate_clean_project_has_no_errors(
-        sample_project : Project
+        sampleProject : Project
 ) -> None:
-    issues = sample_project.validate()
+    issues = sampleProject.validate()
     errors = [i for i in issues if i.severity == "error"]
     assert errors == []
 
 
 def test_orphan_edge_flagged_by_validator() -> None:
-    raw_nodes : List[Dict[str, Any]] = [
+    rawNodes : List[Dict[str, Any]] = [
         {"kind": "supplier", "name": "S", "hashKey": "N-S"},
     ]
-    raw_edges : List[Dict[str, Any]] = [
+    rawEdges : List[Dict[str, Any]] = [
         {
             "kind": "lane", "name": "bad", "hashKey": "E-BAD",
             "srcKey": "N-S", "dstKey": "N-MISSING",
         },
     ]
-    issues = validate_project(raw_nodes, raw_edges, _manifest())
+    issues = validateProject(rawNodes, rawEdges, _manifest())
     codes = [i.code for i in issues if i.severity == "error"]
 
     assert any("orphan" in code for code in codes)
 
 
 def test_duplicate_hashkey_flagged_by_validator() -> None:
-    raw_nodes : List[Dict[str, Any]] = [
+    rawNodes : List[Dict[str, Any]] = [
         {"kind": "supplier", "name": "A", "hashKey": "N-DUP"},
         {"kind": "supplier", "name": "B", "hashKey": "N-DUP"},
     ]
-    issues = validate_project(raw_nodes, [], _manifest())
+    issues = validateProject(rawNodes, [], _manifest())
     errors = [i for i in issues if i.severity == "error"]
 
     assert any(i.code == "duplicate-node-key" for i in errors)
 
 
 def test_lat_lon_out_of_range_flagged() -> None:
-    raw_nodes : List[Dict[str, Any]] = [
+    rawNodes : List[Dict[str, Any]] = [
         {
             "kind": "supplier", "name": "X", "hashKey": "N-X",
             "latitude": 999.0, "longitude": -999.0,
         },
     ]
-    issues = validate_project(raw_nodes, [], _manifest())
+    issues = validateProject(rawNodes, [], _manifest())
     codes = {i.code for i in issues if i.severity == "error"}
 
     assert "latitude-out-of-range" in codes
@@ -114,7 +114,7 @@ def test_manifest_schema_version_warning() -> None:
         "arclineSchemaVersion": "9.9.9",
         "createdAt": "2025-01-01T00:00:00+00:00",
     }
-    issues = validate_project([], [], manifest)
+    issues = validateProject([], [], manifest)
     warnings = [i for i in issues if i.severity == "warning"]
     assert any(
         i.code == "manifest-schema-version-drift" for i in warnings
@@ -122,35 +122,35 @@ def test_manifest_schema_version_warning() -> None:
 
 
 def test_yaml_format_roundtrip(
-        sample_project : Project, tmp_path : Path
+        sampleProject : Project, tmp_path : Path
 ) -> None:
     out = tmp_path / "graph.yaml"
-    to_yaml(
-        nodes = sample_project.nodes, edges = sample_project.edges,
+    toYaml(
+        nodes = sampleProject.nodes, edges = sampleProject.edges,
         path = out,
     )
-    nodes, edges = from_yaml(out)
+    nodes, edges = fromYaml(out)
 
-    assert len(nodes) == len(sample_project.nodes)
-    assert len(edges) == len(sample_project.edges)
+    assert len(nodes) == len(sampleProject.nodes)
+    assert len(edges) == len(sampleProject.edges)
 
 
 def test_csv_format_roundtrip(tmp_path : Path) -> None:
-    nodes_csv = tmp_path / "nodes.csv"
-    edges_csv = tmp_path / "edges.csv"
+    nodesCsv = tmp_path / "nodes.csv"
+    edgesCsv = tmp_path / "edges.csv"
 
-    nodes_csv.write_text(
+    nodesCsv.write_text(
         "kind,name,hashKey,leadTimeDays\n"
         "supplier,S1,N-S1,3.0\n",
         encoding = "utf-8",
     )
-    edges_csv.write_text(
+    edgesCsv.write_text(
         "kind,name,hashKey,srcKey,dstKey,distanceKm,costPerUnit,"
         "transitDays,mode\n",
         encoding = "utf-8",
     )
 
-    nodes, edges = from_csv(nodes_csv, edges_csv)
+    nodes, edges = fromCsv(nodesCsv, edgesCsv)
 
     assert len(nodes) == 1
     assert nodes[0].hashKey == "N-S1"
@@ -158,103 +158,103 @@ def test_csv_format_roundtrip(tmp_path : Path) -> None:
 
 
 def test_parquet_format_roundtrip(
-        sample_project : Project, tmp_path : Path
+        sampleProject : Project, tmp_path : Path
 ) -> None:
     pytest.importorskip("pyarrow")
 
-    nodes_pq = tmp_path / "nodes.parquet"
-    edges_pq = tmp_path / "edges.parquet"
+    nodesPq = tmp_path / "nodes.parquet"
+    edgesPq = tmp_path / "edges.parquet"
 
-    to_parquet(
-        nodes = sample_project.nodes, edges = sample_project.edges,
-        nodes_path = nodes_pq, edges_path = edges_pq,
+    toParquet(
+        nodes = sampleProject.nodes, edges = sampleProject.edges,
+        nodesPath = nodesPq, edgesPath = edgesPq,
     )
 
-    nodes, edges = from_parquet(nodes_pq, edges_pq)
-    assert len(nodes) == len(sample_project.nodes)
-    assert len(edges) == len(sample_project.edges)
+    nodes, edges = fromParquet(nodesPq, edgesPq)
+    assert len(nodes) == len(sampleProject.nodes)
+    assert len(edges) == len(sampleProject.edges)
 
 
-def test_save_writes_flat_arrays(sample_project : Project) -> None:
+def test_save_writes_flat_arrays(sampleProject : Project) -> None:
     """Regression: nodes.json and edges.json must be flat arrays."""
 
     import json as _json
 
-    nodes_raw = _json.loads(
-        (sample_project.path / "nodes.json").read_text(
+    nodesRaw = _json.loads(
+        (sampleProject.path / "nodes.json").read_text(
             encoding = "utf-8"
         )
     )
-    edges_raw = _json.loads(
-        (sample_project.path / "edges.json").read_text(
+    edgesRaw = _json.loads(
+        (sampleProject.path / "edges.json").read_text(
             encoding = "utf-8"
         )
     )
 
-    assert isinstance(nodes_raw, list)
-    assert isinstance(edges_raw, list)
-    assert len(nodes_raw) == len(sample_project.nodes)
-    assert len(edges_raw) == len(sample_project.edges)
-    assert all("kind" in rec for rec in nodes_raw)
-    assert all("srcKey" in rec for rec in edges_raw)
+    assert isinstance(nodesRaw, list)
+    assert isinstance(edgesRaw, list)
+    assert len(nodesRaw) == len(sampleProject.nodes)
+    assert len(edgesRaw) == len(sampleProject.edges)
+    assert all("kind" in rec for rec in nodesRaw)
+    assert all("srcKey" in rec for rec in edgesRaw)
 
 
 def test_open_accepts_legacy_envelope_form(
-        sample_project : Project
+        sampleProject : Project
 ) -> None:
     """Back-compat: envelope-form nodes.json / edges.json still loads."""
 
     import json as _json
 
-    nodes_path = sample_project.path / "nodes.json"
-    edges_path = sample_project.path / "edges.json"
-    nodes_records = _json.loads(nodes_path.read_text(encoding = "utf-8"))
-    edges_records = _json.loads(edges_path.read_text(encoding = "utf-8"))
+    nodesPath = sampleProject.path / "nodes.json"
+    edgesPath = sampleProject.path / "edges.json"
+    nodesRecords = _json.loads(nodesPath.read_text(encoding = "utf-8"))
+    edgesRecords = _json.loads(edgesPath.read_text(encoding = "utf-8"))
 
-    nodes_path.write_text(
-        _json.dumps({"nodes": nodes_records, "edges": []}),
+    nodesPath.write_text(
+        _json.dumps({"nodes": nodesRecords, "edges": []}),
         encoding = "utf-8",
     )
-    edges_path.write_text(
-        _json.dumps({"nodes": [], "edges": edges_records}),
+    edgesPath.write_text(
+        _json.dumps({"nodes": [], "edges": edgesRecords}),
         encoding = "utf-8",
     )
 
-    reopened = Project.open(sample_project.path)
-    assert len(reopened.nodes) == len(sample_project.nodes)
-    assert len(reopened.edges) == len(sample_project.edges)
+    reopened = Project.open(sampleProject.path)
+    assert len(reopened.nodes) == len(sampleProject.nodes)
+    assert len(reopened.edges) == len(sampleProject.edges)
 
 
 def test_open_rejects_null_nodes_payload(
-        sample_project : Project
+        sampleProject : Project
 ) -> None:
     """Regression: ``{"nodes": null}`` must raise ValueError, not TypeError."""
 
     import json as _json
 
-    nodes_path = sample_project.path / "nodes.json"
-    edges_path = sample_project.path / "edges.json"
+    nodesPath = sampleProject.path / "nodes.json"
+    edgesPath = sampleProject.path / "edges.json"
 
-    nodes_path.write_text(
+    nodesPath.write_text(
         _json.dumps({"nodes": None, "edges": []}),
         encoding = "utf-8",
     )
-    edges_path.write_text(
+    edgesPath.write_text(
         _json.dumps({"nodes": [], "edges": None}),
         encoding = "utf-8",
     )
 
     with pytest.raises(ValueError):
-        Project.open(sample_project.path)
+        Project.open(sampleProject.path)
 
 
 def test_validator_warns_self_loop() -> None:
     """Regression: srcKey == dstKey must emit a self-loop-edge warning."""
 
-    raw_nodes : List[Dict[str, Any]] = [
+    rawNodes : List[Dict[str, Any]] = [
         {"kind": "supplier", "name": "S", "hashKey": "N-S"},
     ]
-    raw_edges : List[Dict[str, Any]] = [
+    rawEdges : List[Dict[str, Any]] = [
         {
             "kind": "lane", "name": "loop", "hashKey": "E-LOOP",
             "srcKey": "N-S", "dstKey": "N-S",
@@ -263,17 +263,17 @@ def test_validator_warns_self_loop() -> None:
         },
     ]
 
-    issues = validate_project(raw_nodes, raw_edges, _manifest())
+    issues = validateProject(rawNodes, rawEdges, _manifest())
     assert any(i.code == "self-loop-edge" for i in issues)
 
 
 def test_validator_unknown_kind_is_error() -> None:
     """Regression: unknown kind must be severity == 'error', not warning."""
 
-    raw_nodes : List[Dict[str, Any]] = [
+    rawNodes : List[Dict[str, Any]] = [
         {"kind": "alien", "name": "X", "hashKey": "N-X"},
     ]
-    issues = validate_project(raw_nodes, [], _manifest())
+    issues = validateProject(rawNodes, [], _manifest())
     matches = [i for i in issues if i.code == "unknown-node-kind"]
 
     assert matches

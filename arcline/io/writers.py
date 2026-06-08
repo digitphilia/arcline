@@ -23,7 +23,7 @@ from arcline.graph.base.edges import AbstractEdge
 from arcline.graph.base.nodes import AbstractNode
 
 
-def __node_record__(node : AbstractNode) -> Dict[str, Any]:
+def __nodeRecord__(node : AbstractNode) -> Dict[str, Any]:
     """
     Serialise a single node into a flat record dictionary with
     ``kind`` placed first.
@@ -42,7 +42,7 @@ def __node_record__(node : AbstractNode) -> Dict[str, Any]:
     return record
 
 
-def __edge_record__(edge : AbstractEdge) -> Dict[str, Any]:
+def __edgeRecord__(edge : AbstractEdge) -> Dict[str, Any]:
     """
     Serialise a single edge into a flat record dictionary, replacing
     nested node references with their ``hashKey`` strings.
@@ -62,7 +62,7 @@ def __edge_record__(edge : AbstractEdge) -> Dict[str, Any]:
     return record
 
 
-def _build_payload(
+def _buildPayload(
         nodes : List[AbstractNode],
         edges : List[AbstractEdge]
 ) -> Dict[str, List[Dict[str, Any]]]:
@@ -81,12 +81,12 @@ def _build_payload(
     """
 
     return {
-        "nodes": [__node_record__(node) for node in nodes],
-        "edges": [__edge_record__(edge) for edge in edges],
+        "nodes": [__nodeRecord__(node) for node in nodes],
+        "edges": [__edgeRecord__(edge) for edge in edges],
     }
 
 
-def to_json_records(
+def toJsonRecords(
         records : List[Dict[str, Any]],
         path : Path,
         indent : int = 2
@@ -120,7 +120,7 @@ def to_json_records(
         )
 
 
-def to_json(
+def toJson(
         nodes : List[AbstractNode],
         edges : List[AbstractEdge],
         path : Path,
@@ -131,7 +131,7 @@ def to_json(
     ``{"nodes": [...], "edges": [...]}``) to ``path``.
 
     .. deprecated:: 0.0.1
-        Prefer :func:`to_json_records` for per-artifact writes. This
+        Prefer :func:`toJsonRecords` for per-artifact writes. This
         helper is retained for backward compatibility with the
         envelope-form ``nodes.json`` / ``edges.json`` files produced
         by earlier releases.
@@ -153,7 +153,7 @@ def to_json(
     :rtype:   None
     """
 
-    payload = _build_payload(nodes, edges)
+    payload = _buildPayload(nodes, edges)
 
     with Path(path).open("w", encoding = "utf-8") as fp:
         json.dump(
@@ -162,7 +162,7 @@ def to_json(
         )
 
 
-def to_yaml(
+def toYaml(
         nodes : List[AbstractNode],
         edges : List[AbstractEdge],
         path : Path
@@ -182,7 +182,7 @@ def to_yaml(
     :rtype:   None
     """
 
-    payload = _build_payload(nodes, edges)
+    payload = _buildPayload(nodes, edges)
 
     with Path(path).open("w", encoding = "utf-8") as fp:
         yaml.safe_dump(
@@ -190,11 +190,11 @@ def to_yaml(
         )
 
 
-def to_parquet(
+def toParquet(
         nodes : List[AbstractNode],
         edges : List[AbstractEdge],
-        nodes_path : Path,
-        edges_path : Path
+        nodesPath : Path,
+        edgesPath : Path
 ) -> None:
     """
     Write nodes and edges to two separate Parquet files for bulk
@@ -206,22 +206,22 @@ def to_parquet(
     :type  edges: List[AbstractEdge]
     :param edges: Edges to serialise.
 
-    :type  nodes_path: Path
-    :param nodes_path: Output path for the nodes Parquet file.
+    :type  nodesPath: Path
+    :param nodesPath: Output path for the nodes Parquet file.
 
-    :type  edges_path: Path
-    :param edges_path: Output path for the edges Parquet file.
+    :type  edgesPath: Path
+    :param edgesPath: Output path for the edges Parquet file.
 
     :rtype:   None
     """
 
-    node_records = [__node_record__(node) for node in nodes]
-    edge_records = [__edge_record__(edge) for edge in edges]
+    nodeRecords = [__nodeRecord__(node) for node in nodes]
+    edgeRecords = [__edgeRecord__(edge) for edge in edges]
 
     import pandas as pd
-    pd.DataFrame(node_records).to_parquet(
-        Path(nodes_path), index = False
+    pd.DataFrame(nodeRecords).to_parquet(
+        Path(nodesPath), index = False
     )
-    pd.DataFrame(edge_records).to_parquet(
-        Path(edges_path), index = False
+    pd.DataFrame(edgeRecords).to_parquet(
+        Path(edgesPath), index = False
     )

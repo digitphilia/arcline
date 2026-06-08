@@ -14,13 +14,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from dash import Dash, Input, Output, State, ctx, no_update
 
-from arcline.dashboard.components import make_node_form, make_node_table
+from arcline.dashboard.components import makeNodeForm, makeNodeTable
 from arcline.dashboard.state import session
 from arcline.dashboard.state.store import STORE_GRAPH_DIRTY
 from arcline.graph.registry import resolve_node
 
 
-def walk_values(
+def walkValues(
         node : Any, prefix : str, sink : Dict[str, Any]
 ) -> None:
     """
@@ -43,23 +43,23 @@ def walk_values(
 
     if isinstance(node, dict):
         props = node.get("props", {}) if "props" in node else {}
-        node_id = props.get("id")
-        if isinstance(node_id, str) and node_id.startswith(prefix):
-            field_name = node_id[len(prefix):]
-            if field_name and "value" in props:
-                sink[field_name] = props.get("value")
+        nodeId = props.get("id")
+        if isinstance(nodeId, str) and nodeId.startswith(prefix):
+            fieldName = nodeId[len(prefix):]
+            if fieldName and "value" in props:
+                sink[fieldName] = props.get("value")
 
-        for child_key in ("children",):
-            child = props.get(child_key)
+        for childKey in ("children",):
+            child = props.get(childKey)
             if child is not None:
-                walk_values(child, prefix, sink)
+                walkValues(child, prefix, sink)
 
     elif isinstance(node, list):
         for item in node:
-            walk_values(item, prefix, sink)
+            walkValues(item, prefix, sink)
 
 
-def coerce_payload(
+def coercePayload(
         cls : type, payload : Dict[str, Any]
 ) -> Dict[str, Any]:
     """
@@ -93,13 +93,13 @@ def __refresh_rows__() -> List[Dict[str, Any]]:
     Build the latest row payload from the current session graph.
 
     :rtype:   List[Dict[str, Any]]
-    :returns: Row payload mirroring :func:`make_node_table` input.
+    :returns: Row payload mirroring :func:`makeNodeTable` input.
     """
 
-    if not session.is_bound():
+    if not session.isBound():
         return []
 
-    graph = session.get_graph()
+    graph = session.getGraph()
     rows : List[Dict[str, Any]] = []
     for node in graph.nodes:
         payload : Dict[str, Any] = {"kind": type(node).kind}
@@ -127,7 +127,7 @@ def register(app : Dash) -> None:
         State("node-modal", "is_open"),
         prevent_initial_call = True,
     )
-    def toggle_node_modal(
+    def toggleNodeModal(
             add_clicks : Optional[int],
             cancel_clicks : Optional[int],
             save_clicks : Optional[int],
@@ -147,7 +147,7 @@ def register(app : Dash) -> None:
         Input("node-kind-select", "value"),
         prevent_initial_call = False,
     )
-    def render_node_form(kind : Optional[str]) -> Any:
+    def renderNodeForm(kind : Optional[str]) -> Any:
         """
         Re-render the form area when the user selects a different
         node kind.
@@ -156,7 +156,7 @@ def register(app : Dash) -> None:
         if not kind:
             return no_update
 
-        return make_node_form(kind = kind)
+        return makeNodeForm(kind = kind)
 
     @app.callback(
         Output("node-table", "rowData"),
@@ -168,10 +168,10 @@ def register(app : Dash) -> None:
         State(STORE_GRAPH_DIRTY, "data"),
         prevent_initial_call = True,
     )
-    def save_node(
+    def saveNode(
             n_clicks : Optional[int],
             kind : Optional[str],
-            form_children : Any,
+            formChildren : Any,
             dirty : Any,
     ) -> Tuple[Any, str, Any]:
         """
@@ -182,22 +182,22 @@ def register(app : Dash) -> None:
         if not n_clicks or not kind:
             return no_update, no_update, no_update
 
-        if not session.is_bound():
+        if not session.isBound():
             return no_update, "No project bound.", no_update
 
         cls = resolve_node(kind)
         harvested : Dict[str, Any] = {}
-        walk_values(form_children, "node-form-", harvested)
-        payload = coerce_payload(cls, harvested)
+        walkValues(formChildren, "node-form-", harvested)
+        payload = coercePayload(cls, harvested)
 
         try:
             instance = cls(**payload)
-            session.add_node_cmd(instance)
+            session.addNodeCmd(instance)
         except Exception as exc:
             return no_update, f"Failed to save: {exc}", no_update
 
-        next_dirty = (int(dirty) + 1) if isinstance(dirty, int) else 1
-        return __refresh_rows__(), "", next_dirty
+        nextDirty = (int(dirty) + 1) if isinstance(dirty, int) else 1
+        return __refresh_rows__(), "", nextDirty
 
     @app.callback(
         Output("node-table", "rowData", allow_duplicate = True),
@@ -207,7 +207,7 @@ def register(app : Dash) -> None:
         State(STORE_GRAPH_DIRTY, "data"),
         prevent_initial_call = True,
     )
-    def delete_node(
+    def deleteNode(
             n_clicks : Optional[int],
             selected : Optional[List[Dict[str, Any]]],
             dirty : Any,
@@ -216,18 +216,18 @@ def register(app : Dash) -> None:
         Remove the currently-selected node (if any) from the graph.
         """
 
-        if not n_clicks or not selected or not session.is_bound():
+        if not n_clicks or not selected or not session.isBound():
             return no_update, no_update
 
-        graph = session.get_graph()
-        hash_key = selected[0].get("hashKey")
+        graph = session.getGraph()
+        hashKey = selected[0].get("hashKey")
         for cur in graph.nodes:
-            if cur.hashKey == hash_key:
+            if cur.hashKey == hashKey:
                 try:
-                    session.remove_node_cmd(cur)
+                    session.removeNodeCmd(cur)
                 except Exception:
                     return no_update, no_update
                 break
 
-        next_dirty = (int(dirty) + 1) if isinstance(dirty, int) else 1
-        return __refresh_rows__(), next_dirty
+        nextDirty = (int(dirty) + 1) if isinstance(dirty, int) else 1
+        return __refresh_rows__(), nextDirty

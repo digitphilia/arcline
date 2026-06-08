@@ -7,7 +7,7 @@ Server-Side Session State
 Single-user, single-process holder for the live
 :class:`arcline.graph.base.AbstractGraph` instance and the on-disk
 :class:`arcline.io.Project` it was loaded from. All mutations flow
-through a small command pattern (``add_node_cmd``, ``update_edge_cmd``
+through a small command pattern (``addNodeCmd``, ``updateEdgeCmd``
 and friends) so that future audit / undo wiring has a single choke
 point to instrument.
 
@@ -35,7 +35,7 @@ _PROJECT : Optional[Project] = None
 _LOCK : threading.RLock = threading.RLock()
 
 
-def bind_project(path : Union[Path, str]) -> None:
+def bindProject(path : Union[Path, str]) -> None:
     """
     Open the project rooted at ``path`` and load its graph into the
     process-wide session slot.
@@ -56,7 +56,7 @@ def bind_project(path : Union[Path, str]) -> None:
         _GRAPH = graph
 
 
-def is_bound() -> bool:
+def isBound() -> bool:
     """
     Indicate whether a project has been bound to the session.
 
@@ -69,7 +69,7 @@ def is_bound() -> bool:
         return _PROJECT is not None and _GRAPH is not None
 
 
-def get_project() -> Project:
+def getProject() -> Project:
     """
     Return the currently bound :class:`arcline.io.Project` handle.
 
@@ -82,12 +82,12 @@ def get_project() -> Project:
     with _LOCK:
         if _PROJECT is None:
             raise RuntimeError(
-                "No project bound; call bind_project() first."
+                "No project bound; call bindProject() first."
             )
         return _PROJECT
 
 
-def get_graph() -> AbstractGraph:
+def getGraph() -> AbstractGraph:
     """
     Return the live :class:`AbstractGraph` instance held in session.
 
@@ -100,7 +100,7 @@ def get_graph() -> AbstractGraph:
     with _LOCK:
         if _GRAPH is None:
             raise RuntimeError(
-                "No project bound; call bind_project() first."
+                "No project bound; call bindProject() first."
             )
         return _GRAPH
 
@@ -120,7 +120,7 @@ def reset() -> None:
         _PROJECT = None
 
 
-def save_project() -> None:
+def saveProject() -> None:
     """
     Persist the in-memory graph back to the bound project on disk.
 
@@ -133,14 +133,14 @@ def save_project() -> None:
     """
 
     with _LOCK:
-        project = get_project()
-        graph = get_graph()
+        project = getProject()
+        graph = getGraph()
         project.nodes = list(graph.nodes)
         project.edges = list(graph.edges)
         project.save()
 
 
-def add_node_cmd(node : AbstractNode) -> AbstractGraph:
+def addNodeCmd(node : AbstractNode) -> AbstractGraph:
     """
     Command-pattern wrapper that inserts a node into the live graph.
 
@@ -152,12 +152,12 @@ def add_node_cmd(node : AbstractNode) -> AbstractGraph:
     """
 
     with _LOCK:
-        graph = get_graph()
+        graph = getGraph()
         graph.addNode(node)
         return graph
 
 
-def update_node_cmd(
+def updateNodeCmd(
         node : AbstractNode, **changes : Any
 ) -> AbstractGraph:
     """
@@ -176,12 +176,12 @@ def update_node_cmd(
     """
 
     with _LOCK:
-        graph = get_graph()
+        graph = getGraph()
         graph.updateNode(node, **changes)
         return graph
 
 
-def remove_node_cmd(node : AbstractNode) -> AbstractGraph:
+def removeNodeCmd(node : AbstractNode) -> AbstractGraph:
     """
     Command-pattern wrapper that deletes a node (and its incident
     edges) from the live graph.
@@ -194,12 +194,12 @@ def remove_node_cmd(node : AbstractNode) -> AbstractGraph:
     """
 
     with _LOCK:
-        graph = get_graph()
+        graph = getGraph()
         graph.removeNode(node)
         return graph
 
 
-def add_edge_cmd(edge : AbstractEdge) -> AbstractGraph:
+def addEdgeCmd(edge : AbstractEdge) -> AbstractGraph:
     """
     Command-pattern wrapper that inserts an edge into the live graph.
 
@@ -211,12 +211,12 @@ def add_edge_cmd(edge : AbstractEdge) -> AbstractGraph:
     """
 
     with _LOCK:
-        graph = get_graph()
+        graph = getGraph()
         graph.addEdge(edge)
         return graph
 
 
-def update_edge_cmd(
+def updateEdgeCmd(
         edge : AbstractEdge, **changes : Any
 ) -> AbstractGraph:
     """
@@ -235,12 +235,12 @@ def update_edge_cmd(
     """
 
     with _LOCK:
-        graph = get_graph()
+        graph = getGraph()
         graph.updateEdge(edge, **changes)
         return graph
 
 
-def remove_edge_cmd(edge : AbstractEdge) -> AbstractGraph:
+def removeEdgeCmd(edge : AbstractEdge) -> AbstractGraph:
     """
     Command-pattern wrapper that deletes an edge from the live graph.
 
@@ -252,6 +252,6 @@ def remove_edge_cmd(edge : AbstractEdge) -> AbstractGraph:
     """
 
     with _LOCK:
-        graph = get_graph()
+        graph = getGraph()
         graph.removeEdge(edge)
         return graph

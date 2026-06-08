@@ -5,7 +5,7 @@ Visualize Page
 --------------
 
 Full-network visualisation built on top of
-:func:`arcline.dashboard.viz.build_figure`. A radio group at the top
+:func:`arcline.dashboard.viz.buildFigure`. A radio group at the top
 of the page toggles between the three supported layout modes; a side
 panel mirrors the attributes of the most recently clicked node or
 edge.
@@ -15,9 +15,9 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-from arcline.dashboard.components import make_kpi_strip
+from arcline.dashboard.components import makeKpiStrip
 from arcline.dashboard.state import session
-from arcline.dashboard.viz import build_figure
+from arcline.dashboard.viz import buildFigure
 
 
 dash.register_page(
@@ -50,8 +50,8 @@ def __bound_layout__() -> html.Div:
     :returns: The page contents.
     """
 
-    graph = session.get_graph()
-    figure = build_figure(graph, mode = "spring")
+    graph = session.getGraph()
+    figure = buildFigure(graph, mode = "spring")
 
     controls = dbc.Card(
         dbc.CardBody(
@@ -68,7 +68,7 @@ def __bound_layout__() -> html.Div:
         className = "mb-2",
     )
 
-    side_panel = dbc.Card(
+    sidePanel = dbc.Card(
         [
             dbc.CardHeader(html.H6("Selection", className = "mb-0")),
             dbc.CardBody(
@@ -83,7 +83,7 @@ def __bound_layout__() -> html.Div:
 
     return html.Div(
         [
-            make_kpi_strip(graph),
+            makeKpiStrip(graph),
             controls,
             dbc.Row(
                 [
@@ -94,7 +94,7 @@ def __bound_layout__() -> html.Div:
                         ),
                         width = 9,
                     ),
-                    dbc.Col(side_panel, width = 3),
+                    dbc.Col(sidePanel, width = 3),
                 ],
                 className = "g-2",
             ),
@@ -111,7 +111,7 @@ def layout() -> html.Div:
     :returns: The page contents.
     """
 
-    if not session.is_bound():
+    if not session.isBound():
         return __no_project_layout__()
 
     return __bound_layout__()

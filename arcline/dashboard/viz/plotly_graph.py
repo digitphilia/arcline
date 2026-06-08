@@ -20,8 +20,8 @@ from typing import Any, Dict, List, Tuple
 
 import plotly.graph_objects as go
 
-from arcline.dashboard.viz.layouts import LayoutMode, compute_layout
-from arcline.dashboard.viz.styles import kind_color
+from arcline.dashboard.viz.layouts import LayoutMode, computeLayout
+from arcline.dashboard.viz.styles import kindColor
 from arcline.graph.base.graph import AbstractGraph
 
 
@@ -84,7 +84,7 @@ def __build_edge_segments__(
 def __build_node_traces__(
         graph : AbstractGraph,
         positions : Dict[str, Tuple[float, float]],
-        scatter_cls : type
+        scatterCls : type
 ) -> List[Any]:
     """
     Emit one scatter trace per node ``kind`` so the legend exposes
@@ -96,23 +96,23 @@ def __build_node_traces__(
     :type  positions: Dict[str, Tuple[float, float]]
     :param positions: Node positions.
 
-    :type  scatter_cls: type
-    :param scatter_cls: Either :class:`go.Scattergl` (abstract modes)
+    :type  scatterCls: type
+    :param scatterCls: Either :class:`go.Scattergl` (abstract modes)
         or :class:`go.Scattermapbox` (geo mode).
 
     :rtype:   List[Any]
     :returns: List of Plotly trace instances.
     """
 
-    by_kind : Dict[str, List[Any]] = {}
+    byKind : Dict[str, List[Any]] = {}
     for node in graph.nodes:
         kind = type(node).kind
-        by_kind.setdefault(kind, []).append(node)
+        byKind.setdefault(kind, []).append(node)
 
     traces : List[Any] = []
-    is_geo = scatter_cls is go.Scattermapbox
+    isGeo = scatterCls is go.Scattermapbox
 
-    for kind, nodes in by_kind.items():
+    for kind, nodes in byKind.items():
         xs : List[float] = []
         ys : List[float] = []
         labels : List[str] = []
@@ -125,9 +125,9 @@ def __build_node_traces__(
             labels.append(node.name)
             hovers.append(__hover_text__(node.model_dump()))
 
-        color = kind_color(kind, side = "node")
+        color = kindColor(kind, side = "node")
 
-        if is_geo:
+        if isGeo:
             traces.append(
                 go.Scattermapbox(
                     lon = xs, lat = ys, mode = "markers",
@@ -192,7 +192,7 @@ def __build_arrow_annotations__(
     return annotations
 
 
-def build_figure(
+def buildFigure(
         graph : AbstractGraph, mode : LayoutMode = "spring"
 ) -> go.Figure:
     """
@@ -209,17 +209,17 @@ def build_figure(
         ``dcc.Graph.figure``.
     """
 
-    positions = compute_layout(graph, mode = mode)
+    positions = computeLayout(graph, mode = mode)
     xs, ys, hovers = __build_edge_segments__(graph, positions)
 
     if mode == "geo":
-        edge_trace = go.Scattermapbox(
+        edgeTrace = go.Scattermapbox(
             lon = xs, lat = ys, mode = "lines",
             line = dict(color = _EDGE_LINE_COLOR, width = 1),
             hoverinfo = "skip", showlegend = False,
         )
-        node_traces = __build_node_traces__(
-            graph, positions, scatter_cls = go.Scattermapbox
+        nodeTraces = __build_node_traces__(
+            graph, positions, scatterCls = go.Scattermapbox
         )
         layout = go.Layout(
             showlegend = True, hovermode = "closest",
@@ -229,15 +229,15 @@ def build_figure(
                 center = dict(lat = 20, lon = 0),
             ),
         )
-        return go.Figure(data = [edge_trace, *node_traces], layout = layout)
+        return go.Figure(data = [edgeTrace, *nodeTraces], layout = layout)
 
-    edge_trace = go.Scattergl(
+    edgeTrace = go.Scattergl(
         x = xs, y = ys, mode = "lines",
         line = dict(color = _EDGE_LINE_COLOR, width = 1),
         hovertext = hovers, hoverinfo = "skip", showlegend = False,
     )
-    node_traces = __build_node_traces__(
-        graph, positions, scatter_cls = go.Scattergl
+    nodeTraces = __build_node_traces__(
+        graph, positions, scatterCls = go.Scattergl
     )
 
     layout = go.Layout(
@@ -248,4 +248,4 @@ def build_figure(
         annotations = __build_arrow_annotations__(graph, positions),
     )
 
-    return go.Figure(data = [edge_trace, *node_traces], layout = layout)
+    return go.Figure(data = [edgeTrace, *nodeTraces], layout = layout)

@@ -21,7 +21,7 @@ from typing import Optional
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-from arcline.dashboard.components.node_form import infer_input
+from arcline.dashboard.components.node_form import inferInput
 from arcline.dashboard.state import session
 from arcline.graph.base.edges import AbstractEdge
 from arcline.graph.registry import resolve_edge
@@ -43,10 +43,10 @@ def __node_options__() -> list:
     :returns: Options payload suitable for :class:`dbc.Select`.
     """
 
-    if not session.is_bound():
+    if not session.isBound():
         return []
 
-    graph = session.get_graph()
+    graph = session.getGraph()
     return [
         {
             "label": f"{node.name} ({node.hashKey})",
@@ -56,10 +56,10 @@ def __node_options__() -> list:
     ]
 
 
-def make_edge_form(
+def makeEdgeForm(
         kind : str,
         instance : Optional[AbstractEdge] = None,
-        form_id_prefix : str = "edge-form"
+        formIdPrefix : str = "edge-form"
 ) -> dbc.Card:
     """
     Build a :class:`dbc.Card` containing an auto-generated form for
@@ -73,9 +73,9 @@ def make_edge_form(
     :param instance: Optional pre-existing edge to prefill the form
         with (edit mode); ``None`` produces a blank create form.
 
-    :type  form_id_prefix: str
-    :param form_id_prefix: Prefix used to derive deterministic input
-        IDs as ``f"{form_id_prefix}-{field_name}"``.
+    :type  formIdPrefix: str
+    :param formIdPrefix: Prefix used to derive deterministic input
+        IDs as ``f"{formIdPrefix}-{fieldName}"``.
 
     :rtype:   dbc.Card
     :returns: A fully-assembled form card with Save / Cancel buttons
@@ -85,20 +85,20 @@ def make_edge_form(
     cls = resolve_edge(kind)
     options = __node_options__()
 
-    src_value = instance.srcNode.hashKey if instance is not None else None
-    dst_value = instance.dstNode.hashKey if instance is not None else None
+    srcValue = instance.srcNode.hashKey if instance is not None else None
+    dstValue = instance.dstNode.hashKey if instance is not None else None
 
     rows : list = [
         dbc.Row(
             [
                 dbc.Label(
-                    "srcKey", html_for = f"{form_id_prefix}-srcKey",
+                    "srcKey", html_for = f"{formIdPrefix}-srcKey",
                     width = 4, className = "text-end fw-bold",
                 ),
                 dbc.Col(
                     dbc.Select(
-                        id = f"{form_id_prefix}-srcKey",
-                        options = options, value = src_value,
+                        id = f"{formIdPrefix}-srcKey",
+                        options = options, value = srcValue,
                     ),
                     width = 8,
                 ),
@@ -108,13 +108,13 @@ def make_edge_form(
         dbc.Row(
             [
                 dbc.Label(
-                    "dstKey", html_for = f"{form_id_prefix}-dstKey",
+                    "dstKey", html_for = f"{formIdPrefix}-dstKey",
                     width = 4, className = "text-end fw-bold",
                 ),
                 dbc.Col(
                     dbc.Select(
-                        id = f"{form_id_prefix}-dstKey",
-                        options = options, value = dst_value,
+                        id = f"{formIdPrefix}-dstKey",
+                        options = options, value = dstValue,
                     ),
                     width = 8,
                 ),
@@ -127,18 +127,18 @@ def make_edge_form(
         if name in _SKIP_FIELDS:
             continue
 
-        input_id = f"{form_id_prefix}-{name}"
+        inputId = f"{formIdPrefix}-{name}"
         current = (
             instance.model_dump().get(name) if instance is not None
             else None
         )
-        control = infer_input(field_info, current, input_id)
+        control = inferInput(field_info, current, inputId)
 
         rows.append(
             dbc.Row(
                 [
                     dbc.Label(
-                        name, html_for = input_id, width = 4,
+                        name, html_for = inputId, width = 4,
                         className = "text-end fw-bold",
                     ),
                     dbc.Col(control, width = 8),
@@ -151,14 +151,14 @@ def make_edge_form(
         [
             dbc.Col(
                 dbc.Button(
-                    "Save", id = f"{form_id_prefix}-save",
+                    "Save", id = f"{formIdPrefix}-save",
                     color = "primary", className = "me-2",
                 ),
                 width = "auto",
             ),
             dbc.Col(
                 dbc.Button(
-                    "Cancel", id = f"{form_id_prefix}-cancel",
+                    "Cancel", id = f"{formIdPrefix}-cancel",
                     color = "secondary", outline = True,
                 ),
                 width = "auto",
@@ -171,11 +171,11 @@ def make_edge_form(
         [
             dbc.Form(rows),
             html.Div(
-                id = f"{form_id_prefix}-error",
+                id = f"{formIdPrefix}-error",
                 className = "text-danger small mt-2",
             ),
             buttons,
-            dcc.Store(id = f"{form_id_prefix}-kind", data = kind),
+            dcc.Store(id = f"{formIdPrefix}-kind", data = kind),
         ]
     )
 

@@ -23,14 +23,14 @@ from arcline.io import Project
 
 
 @pytest.fixture
-def tmp_project_dir(tmp_path : Path) -> Path:
+def tmpProjectDir(tmp_path : Path) -> Path:
     """Fresh temp directory for a project under pytest's tmp_path."""
 
     return tmp_path / "proj"
 
 
 @pytest.fixture
-def sample_nodes() -> List[AbstractNode]:
+def sampleNodes() -> List[AbstractNode]:
     """Three typed nodes covering supplier, plant, customer."""
 
     return [
@@ -44,12 +44,12 @@ def sample_nodes() -> List[AbstractNode]:
 
 
 @pytest.fixture
-def sample_edges(
-        sample_nodes : List[AbstractNode]
+def sampleEdges(
+        sampleNodes : List[AbstractNode]
 ) -> List[AbstractEdge]:
     """Two lanes wiring the sample nodes into a linear chain."""
 
-    src, plant, cust = sample_nodes
+    src, plant, cust = sampleNodes
     return [
         Lane(
             name = "S1->P1", hashKey = "E-S1P1",
@@ -67,24 +67,24 @@ def sample_edges(
 
 
 @pytest.fixture
-def sample_graph(
-        sample_nodes : List[AbstractNode],
-        sample_edges : List[AbstractEdge]
+def sampleGraph(
+        sampleNodes : List[AbstractNode],
+        sampleEdges : List[AbstractEdge]
 ) -> NetworkXGraph:
     """A populated :class:`NetworkXGraph` from the sample fixtures."""
 
     return NetworkXGraph(
-        nodes = list(sample_nodes), edges = list(sample_edges)
+        nodes = list(sampleNodes), edges = list(sampleEdges)
     )
 
 
 @pytest.fixture
-def sample_project(
-        sample_graph : NetworkXGraph, tmp_project_dir : Path
+def sampleProject(
+        sampleGraph : NetworkXGraph, tmpProjectDir : Path
 ) -> Project:
     """Persist the sample graph to disk and yield the project."""
 
     return Project.fromGraph(
-        sample_graph, tmp_project_dir,
+        sampleGraph, tmpProjectDir,
         name = "sample", description = "pytest fixture",
     )

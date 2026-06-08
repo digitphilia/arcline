@@ -17,7 +17,7 @@ mapped to an appropriate dash-bootstrap-components input control:
 The component is a thin wrapper around a :class:`dbc.Card`; the
 calling page is responsible for embedding it (e.g. inside a modal)
 and wiring callbacks against the deterministic input IDs derived
-from ``f"{form_id_prefix}-{field_name}"``.
+from ``f"{formIdPrefix}-{fieldName}"``.
 """
 
 import json
@@ -88,17 +88,17 @@ def __unwrap_optional__(annotation : Any) -> Any:
     """
 
     if get_origin(annotation) is typing.Union:
-        non_none = [a for a in get_args(annotation) if a is not type(None)]
-        if len(non_none) == 1:
-            return non_none[0]
+        nonNone = [a for a in get_args(annotation) if a is not type(None)]
+        if len(nonNone) == 1:
+            return nonNone[0]
 
     return annotation
 
 
-def infer_input(
+def inferInput(
         field_info : FieldInfo,
         value : Any,
-        input_id : str
+        inputId : str
 ) -> Any:
     """
     Build the most appropriate Dash input control for a pydantic
@@ -112,8 +112,8 @@ def infer_input(
     :type  value: Any
     :param value: Initial value to prefill the control with.
 
-    :type  input_id: str
-    :param input_id: DOM id assigned to the rendered control.
+    :type  inputId: str
+    :param inputId: DOM id assigned to the rendered control.
 
     :rtype:   Any
     :returns: A Dash component instance ready for inclusion in the
@@ -129,38 +129,38 @@ def infer_input(
             for opt in get_args(annotation)
         ]
         return dbc.Select(
-            id = input_id, options = options,
+            id = inputId, options = options,
             value = value if value is not None else options[0]["value"],
         )
 
     if annotation is bool:
         return dbc.Switch(
-            id = input_id, value = bool(value) if value is not None else False
+            id = inputId, value = bool(value) if value is not None else False
         )
 
     if annotation in (int, float):
         return dbc.Input(
-            id = input_id, type = "number",
+            id = inputId, type = "number",
             value = value if value is not None else "",
         )
 
     if annotation is dict or origin is dict:
-        as_text = (
+        asText = (
             json.dumps(value, indent = 2, default = str)
             if value is not None else "{}"
         )
-        return dbc.Textarea(id = input_id, value = as_text, rows = 4)
+        return dbc.Textarea(id = inputId, value = asText, rows = 4)
 
     return dbc.Input(
-        id = input_id, type = "text",
+        id = inputId, type = "text",
         value = str(value) if value is not None else "",
     )
 
 
-def make_node_form(
+def makeNodeForm(
         kind : str,
         instance : Optional[AbstractNode] = None,
-        form_id_prefix : str = "node-form"
+        formIdPrefix : str = "node-form"
 ) -> dbc.Card:
     """
     Build a :class:`dbc.Card` containing an auto-generated form for
@@ -174,9 +174,9 @@ def make_node_form(
     :param instance: Optional pre-existing node to prefill the form
         with (edit mode); ``None`` produces a blank create form.
 
-    :type  form_id_prefix: str
-    :param form_id_prefix: Prefix used to derive deterministic input
-        IDs as ``f"{form_id_prefix}-{field_name}"``.
+    :type  formIdPrefix: str
+    :param formIdPrefix: Prefix used to derive deterministic input
+        IDs as ``f"{formIdPrefix}-{fieldName}"``.
 
     :rtype:   dbc.Card
     :returns: A fully-assembled form card with Save / Cancel buttons
@@ -190,15 +190,15 @@ def make_node_form(
         if name in _SKIP_FIELDS:
             continue
 
-        input_id = f"{form_id_prefix}-{name}"
+        inputId = f"{formIdPrefix}-{name}"
         current = __field_value__(instance, name)
-        control = infer_input(field_info, current, input_id)
+        control = inferInput(field_info, current, inputId)
 
         rows.append(
             dbc.Row(
                 [
                     dbc.Label(
-                        name, html_for = input_id, width = 4,
+                        name, html_for = inputId, width = 4,
                         className = "text-end fw-bold",
                     ),
                     dbc.Col(control, width = 8),
@@ -211,14 +211,14 @@ def make_node_form(
         [
             dbc.Col(
                 dbc.Button(
-                    "Save", id = f"{form_id_prefix}-save",
+                    "Save", id = f"{formIdPrefix}-save",
                     color = "primary", className = "me-2",
                 ),
                 width = "auto",
             ),
             dbc.Col(
                 dbc.Button(
-                    "Cancel", id = f"{form_id_prefix}-cancel",
+                    "Cancel", id = f"{formIdPrefix}-cancel",
                     color = "secondary", outline = True,
                 ),
                 width = "auto",
@@ -231,11 +231,11 @@ def make_node_form(
         [
             dbc.Form(rows),
             html.Div(
-                id = f"{form_id_prefix}-error",
+                id = f"{formIdPrefix}-error",
                 className = "text-danger small mt-2",
             ),
             buttons,
-            dcc.Store(id = f"{form_id_prefix}-kind", data = kind),
+            dcc.Store(id = f"{formIdPrefix}-kind", data = kind),
         ]
     )
 

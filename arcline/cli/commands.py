@@ -99,7 +99,7 @@ def validate(
         )
         raise typer.Exit(code = 0)
 
-    error_count = 0
+    errorCount = 0
     for issue in issues:
         color = (
             typer.colors.RED if issue.severity == "error"
@@ -112,11 +112,11 @@ def validate(
             fg = color,
         )
         if issue.severity == "error":
-            error_count += 1
+            errorCount += 1
 
-    if error_count:
+    if errorCount:
         typer.secho(
-            f"\n{error_count} error(s) found.",
+            f"\n{errorCount} error(s) found.",
             fg = typer.colors.RED, err = True,
         )
         raise typer.Exit(code = 1)

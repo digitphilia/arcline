@@ -11,20 +11,20 @@ and KPI summary cards.
 """
 
 from arcline.dashboard.components.data_table import (
-    make_edge_table,
-    make_node_table,
+    makeEdgeTable,
+    makeNodeTable,
 )
-from arcline.dashboard.components.edge_form import make_edge_form
-from arcline.dashboard.components.kpi_cards import make_kpi_strip
-from arcline.dashboard.components.navbar import make_navbar
-from arcline.dashboard.components.node_form import infer_input, make_node_form
+from arcline.dashboard.components.edge_form import makeEdgeForm
+from arcline.dashboard.components.kpi_cards import makeKpiStrip
+from arcline.dashboard.components.navbar import makeNavbar
+from arcline.dashboard.components.node_form import inferInput, makeNodeForm
 
 __all__ = [
-    "make_navbar",
-    "make_node_form",
-    "make_edge_form",
-    "make_node_table",
-    "make_edge_table",
-    "make_kpi_strip",
-    "infer_input",
+    "makeNavbar",
+    "makeNodeForm",
+    "makeEdgeForm",
+    "makeNodeTable",
+    "makeEdgeTable",
+    "makeKpiStrip",
+    "inferInput",
 ]

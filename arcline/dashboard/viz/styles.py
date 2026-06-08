@@ -61,18 +61,18 @@ def __probe_edge__(kind : str):
         from arcline.graph.library.supplier import Supplier
 
         cls = resolve_edge(kind)
-        probe_src = Supplier(name = "_probe-src", hashKey = "_probe-src")
-        probe_dst = Supplier(name = "_probe-dst", hashKey = "_probe-dst")
+        probeSrc = Supplier(name = "_probe-src", hashKey = "_probe-src")
+        probeDst = Supplier(name = "_probe-dst", hashKey = "_probe-dst")
         return cls(
             name = "_probe", hashKey = "_probe",
-            srcNode = probe_src, dstNode = probe_dst,
+            srcNode = probeSrc, dstNode = probeDst,
         )
     except Exception:
         return None
 
 
 @functools.lru_cache(maxsize = 64)
-def kind_color(
+def kindColor(
         kind : str, side : Literal["node", "edge"] = "node"
 ) -> str:
     """
@@ -105,7 +105,7 @@ def kind_color(
 
 
 @functools.lru_cache(maxsize = 64)
-def kind_icon(kind : str) -> Optional[str]:
+def kindIcon(kind : str) -> Optional[str]:
     """
     Resolve the icon path for a node ``kind`` by probing the
     registered class.

@@ -18,7 +18,7 @@ import hashlib
 from typing import Optional
 
 
-def make_key(
+def makeKey(
         kind : str,
         name : str,
         prefix : Optional[str] = None,
@@ -38,7 +38,7 @@ def make_key(
 
     .. code-block:: python
 
-        make_key("supplier", "Acme Inc")
+        makeKey("supplier", "Acme Inc")
         # -> 'N-SUPPLIER-3a1f9b22'
 
     :type  kind: str
@@ -82,9 +82,9 @@ def make_key(
     return f"{prefix or 'N'}-{kind.upper()}-{digest}"
 
 
-def make_node_key(kind : str, name : str, length : int = 8) -> str:
+def makeNodeKey(kind : str, name : str, length : int = 8) -> str:
     """
-    Convenience wrapper around :func:`make_key` with ``prefix="N"``
+    Convenience wrapper around :func:`makeKey` with ``prefix="N"``
     for node-style identifiers.
 
     :type  kind: str
@@ -101,19 +101,19 @@ def make_node_key(kind : str, name : str, length : int = 8) -> str:
         ``N-<KIND>-<hash>``.
     """
 
-    return make_key(
+    return makeKey(
         kind = kind, name = name, prefix = "N", length = length
     )
 
 
-def make_edge_key(
+def makeEdgeKey(
         kind : str,
-        src_name : str,
-        dst_name : str,
+        srcName : str,
+        dstName : str,
         length : int = 8
 ) -> str:
     """
-    Convenience wrapper around :func:`make_key` for edge-style
+    Convenience wrapper around :func:`makeKey` for edge-style
     identifiers. The hash input is the concatenation of source and
     destination names joined with ``"->"`` so that an edge's identity
     captures both endpoints deterministically.
@@ -121,11 +121,11 @@ def make_edge_key(
     :type  kind: str
     :param kind: Edge ``kind`` discriminator.
 
-    :type  src_name: str
-    :param src_name: Free-form name of the source endpoint.
+    :type  srcName: str
+    :param srcName: Free-form name of the source endpoint.
 
-    :type  dst_name: str
-    :param dst_name: Free-form name of the destination endpoint.
+    :type  dstName: str
+    :param dstName: Free-form name of the destination endpoint.
 
     :type  length: int
     :param length: Hex-character length of the hash segment.
@@ -135,7 +135,7 @@ def make_edge_key(
         ``E-<KIND>-<hash>``.
     """
 
-    composite = f"{src_name}->{dst_name}"
-    return make_key(
+    composite = f"{srcName}->{dstName}"
+    return makeKey(
         kind = kind, name = composite, prefix = "E", length = length
     )

@@ -61,8 +61,8 @@ def __project_layout__() -> html.Div:
     :returns: A card summarising project metadata.
     """
 
-    project = session.get_project()
-    graph = session.get_graph()
+    project = session.getProject()
+    graph = session.getGraph()
 
     rows = [
         ("Name", project.name),
@@ -112,7 +112,7 @@ def layout() -> html.Div:
     :returns: The page contents.
     """
 
-    if not session.is_bound():
+    if not session.isBound():
         return __no_project_layout__()
 
     return __project_layout__()

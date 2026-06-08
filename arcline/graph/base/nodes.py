@@ -15,9 +15,11 @@ using :mod:`pydantic` with other default configurations.
 
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
-from typing import Any, Dict, Final, Optional
+from typing import Any, ClassVar, Dict, Final, Optional
 
-class AbstractNode(BaseModel, ABC):
+from arcline.historian.spec import HistorianMixin, HistorySpec
+
+class AbstractNode(BaseModel, HistorianMixin, ABC):
     """
     Abstract definition of a graph node which holds the critical
     properties of the node. In a supply chain optimization problem a

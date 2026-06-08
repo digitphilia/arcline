@@ -23,16 +23,16 @@ _NAV_LINKS : list = [
 ]
 
 
-def make_navbar(project_name : str = "(no project)") -> dbc.NavbarSimple:
+def makeNavbar(projectName : str = "(no project)") -> dbc.NavbarSimple:
     """
     Construct the dashboard top navigation bar.
 
-    The brand on the left reads ``"arcline | <project_name>"``;
+    The brand on the left reads ``"arcline | <projectName>"``;
     each entry in :data:`_NAV_LINKS` is rendered as a
     :class:`dbc.NavLink` on the right.
 
-    :type  project_name: str
-    :param project_name: The project name to surface alongside the
+    :type  projectName: str
+    :param projectName: The project name to surface alongside the
         ``"arcline"`` brand label.
 
     :rtype:   dbc.NavbarSimple
@@ -46,8 +46,8 @@ def make_navbar(project_name : str = "(no project)") -> dbc.NavbarSimple:
 
     return dbc.NavbarSimple(
         children = links,
-        brand = f"arcline | {project_name}",
-        brand_href = "/",
+        brand = f"arcline | {projectName}",
+        brandHref = "/",
         color = "primary",
         dark = True,
         fluid = True,

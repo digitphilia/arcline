@@ -13,13 +13,14 @@ The module defines the abstract base edge improved with data validation
 using :mod:`pydantic` with other default configurations.
 """
 
-from typing import Final, Optional
+from typing import ClassVar, Dict, Final, Optional
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
 
 from arcline.graph.base.nodes import AbstractNode
+from arcline.historian.spec import HistorianMixin, HistorySpec
 
-class AbstractEdge(BaseModel, ABC):
+class AbstractEdge(BaseModel, HistorianMixin, ABC):
     """
     Abstract definition of a graph edge which defines the relationship
     between two nodes of the graph and is the fundamental property

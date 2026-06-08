@@ -7,14 +7,14 @@ Edges Page
 CRUD page for the project's edge list. Mirrors the structure of the
 nodes page: KPI strip, table of every edge, and an "Add Edge" button
 that opens a modal containing a kind picker and the dynamically
-rendered :func:`make_edge_form`.
+rendered :func:`makeEdgeForm`.
 """
 
 import dash
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-from arcline.dashboard.components import make_edge_table, make_kpi_strip
+from arcline.dashboard.components import makeEdgeTable, makeKpiStrip
 from arcline.dashboard.state import session
 from arcline.graph.registry import iter_edges
 
@@ -49,8 +49,8 @@ def __bound_layout__() -> html.Div:
     :returns: Edges page contents.
     """
 
-    graph = session.get_graph()
-    kind_options = [
+    graph = session.getGraph()
+    kindOptions = [
         {"label": kind, "value": kind} for kind, _ in iter_edges()
     ]
 
@@ -81,9 +81,9 @@ def __bound_layout__() -> html.Div:
                     dbc.Label("Kind"),
                     dcc.Dropdown(
                         id = "edge-kind-select",
-                        options = kind_options,
-                        value = kind_options[0]["value"]
-                        if kind_options else None,
+                        options = kindOptions,
+                        value = kindOptions[0]["value"]
+                        if kindOptions else None,
                         clearable = False, className = "mb-3",
                     ),
                     html.Div(id = "edge-form-area"),
@@ -95,9 +95,9 @@ def __bound_layout__() -> html.Div:
 
     return html.Div(
         [
-            make_kpi_strip(graph),
+            makeKpiStrip(graph),
             toolbar,
-            make_edge_table(graph),
+            makeEdgeTable(graph),
             modal,
         ],
         className = "p-3",
@@ -112,7 +112,7 @@ def layout() -> html.Div:
     :returns: The page contents.
     """
 
-    if not session.is_bound():
+    if not session.isBound():
         return __no_project_layout__()
 
     return __bound_layout__()

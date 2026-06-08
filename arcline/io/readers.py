@@ -36,10 +36,10 @@ _REQUIRED_EDGE_FIELDS : Tuple[str, ...] = (
 )
 
 
-def __require_fields__(
+def __requireFields__(
         record : Dict[str, Any],
         required : Tuple[str, ...],
-        kind_label : str
+        kindLabel : str
 ) -> None:
     """
     Raise :class:`KeyError` if ``record`` is missing any of the
@@ -51,8 +51,8 @@ def __require_fields__(
     :type  required: Tuple[str, ...]
     :param required: Required field names.
 
-    :type  kind_label: str
-    :param kind_label: ``"Node"`` or ``"Edge"`` for the error
+    :type  kindLabel: str
+    :param kindLabel: ``"Node"`` or ``"Edge"`` for the error
         message.
 
     :raises KeyError: When a required field is absent.
@@ -63,7 +63,7 @@ def __require_fields__(
     for field in required:
         if field not in record:
             raise KeyError(
-                f"{kind_label} record missing required field "
+                f"{kindLabel} record missing required field "
                 f"{field!r}."
             )
 
@@ -86,15 +86,15 @@ def __dropna__(row : Dict[str, Any]) -> Dict[str, Any]:
     import pandas as pd
     for key, value in row.items():
         try:
-            is_na = bool(pd.isna(value))
+            isNa = bool(pd.isna(value))
         except (TypeError, ValueError):
-            is_na = False
-        cleaned[key] = None if is_na else value
+            isNa = False
+        cleaned[key] = None if isNa else value
 
     return cleaned
 
 
-def __build_node__(record : Dict[str, Any]) -> AbstractNode:
+def __buildNode__(record : Dict[str, Any]) -> AbstractNode:
     """
     Resolve a node ``kind`` and instantiate the registered class.
 
@@ -109,7 +109,7 @@ def __build_node__(record : Dict[str, Any]) -> AbstractNode:
     :returns: A pydantic-validated node instance.
     """
 
-    __require_fields__(record, _REQUIRED_NODE_FIELDS, "Node")
+    __requireFields__(record, _REQUIRED_NODE_FIELDS, "Node")
     payload = dict(record)
     kind = payload.pop("kind")
     try:
@@ -121,19 +121,19 @@ def __build_node__(record : Dict[str, Any]) -> AbstractNode:
     return cls(**payload)
 
 
-def __build_edge__(
+def __buildEdge__(
         record : Dict[str, Any],
-        nodes_by_key : Dict[str, AbstractNode]
+        nodesByKey : Dict[str, AbstractNode]
 ) -> AbstractEdge:
     """
     Resolve an edge ``kind``, look up its endpoints in
-    ``nodes_by_key`` and instantiate the registered class.
+    ``nodesByKey`` and instantiate the registered class.
 
     :type  record: Dict[str, Any]
     :param record: Raw edge dictionary.
 
-    :type  nodes_by_key: Dict[str, AbstractNode]
-    :param nodes_by_key: Lookup mapping from ``hashKey`` to the
+    :type  nodesByKey: Dict[str, AbstractNode]
+    :param nodesByKey: Lookup mapping from ``hashKey`` to the
         already-deserialised node instance.
 
     :raises KeyError: If a required field is missing, the ``kind``
@@ -144,20 +144,20 @@ def __build_edge__(
         ``srcNode`` / ``dstNode`` references.
     """
 
-    __require_fields__(record, _REQUIRED_EDGE_FIELDS, "Edge")
+    __requireFields__(record, _REQUIRED_EDGE_FIELDS, "Edge")
     payload = dict(record)
     kind = payload.pop("kind")
-    src_key = payload.pop("srcKey")
-    dst_key = payload.pop("dstKey")
+    srcKey = payload.pop("srcKey")
+    dstKey = payload.pop("dstKey")
 
-    if src_key not in nodes_by_key:
+    if srcKey not in nodesByKey:
         raise KeyError(
-            f"Edge references unknown srcKey {src_key!r}."
+            f"Edge references unknown srcKey {srcKey!r}."
         )
 
-    if dst_key not in nodes_by_key:
+    if dstKey not in nodesByKey:
         raise KeyError(
-            f"Edge references unknown dstKey {dst_key!r}."
+            f"Edge references unknown dstKey {dstKey!r}."
         )
 
     try:
@@ -167,13 +167,13 @@ def __build_edge__(
             f"Unknown edge kind {kind!r}: {exc}"
         ) from exc
     return cls(
-        srcNode = nodes_by_key[src_key],
-        dstNode = nodes_by_key[dst_key],
+        srcNode = nodesByKey[srcKey],
+        dstNode = nodesByKey[dstKey],
         **payload,
     )
 
 
-def __split_payload__(
+def __splitPayload__(
         payload : Any
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
@@ -208,36 +208,36 @@ def __split_payload__(
 
 
 def __assemble__(
-        node_records : List[Dict[str, Any]],
-        edge_records : List[Dict[str, Any]]
+        nodeRecords : List[Dict[str, Any]],
+        edgeRecords : List[Dict[str, Any]]
 ) -> Tuple[List[AbstractNode], List[AbstractEdge]]:
     """
     Build pydantic node and edge instances from raw record lists.
 
-    :type  node_records: List[Dict[str, Any]]
-    :param node_records: Raw node dictionaries.
+    :type  nodeRecords: List[Dict[str, Any]]
+    :param nodeRecords: Raw node dictionaries.
 
-    :type  edge_records: List[Dict[str, Any]]
-    :param edge_records: Raw edge dictionaries.
+    :type  edgeRecords: List[Dict[str, Any]]
+    :param edgeRecords: Raw edge dictionaries.
 
     :rtype:   Tuple[List[AbstractNode], List[AbstractEdge]]
     :returns: Parallel lists of constructed nodes and edges.
     """
 
     nodes : List[AbstractNode] = [
-        __build_node__(rec) for rec in node_records
+        __buildNode__(rec) for rec in nodeRecords
     ]
-    nodes_by_key : Dict[str, AbstractNode] = {
+    nodesByKey : Dict[str, AbstractNode] = {
         node.hashKey: node for node in nodes
     }
     edges : List[AbstractEdge] = [
-        __build_edge__(rec, nodes_by_key) for rec in edge_records
+        __buildEdge__(rec, nodesByKey) for rec in edgeRecords
     ]
 
     return nodes, edges
 
 
-def from_json(
+def fromJson(
         path : Path
 ) -> Tuple[List[AbstractNode], List[AbstractEdge]]:
     """
@@ -259,22 +259,22 @@ def from_json(
     with Path(path).open("r", encoding = "utf-8") as fp:
         payload = json.load(fp)
 
-    node_records, edge_records = __split_payload__(payload)
-    return __assemble__(node_records, edge_records)
+    nodeRecords, edgeRecords = __splitPayload__(payload)
+    return __assemble__(nodeRecords, edgeRecords)
 
 
-def from_yaml(
+def fromYaml(
         path : Path
 ) -> Tuple[List[AbstractNode], List[AbstractEdge]]:
     """
     Read a single-file YAML project payload (same structure as
-    :func:`from_json`) and deserialise it into graph objects.
+    :func:`fromJson`) and deserialise it into graph objects.
 
     :type  path: Path
     :param path: Filesystem path to the YAML file.
 
-    :raises KeyError: As in :func:`from_json`.
-    :raises ValueError: As in :func:`from_json`.
+    :raises KeyError: As in :func:`fromJson`.
+    :raises ValueError: As in :func:`fromJson`.
 
     :rtype:   Tuple[List[AbstractNode], List[AbstractEdge]]
     :returns: ``(nodes, edges)`` lists.
@@ -283,13 +283,13 @@ def from_yaml(
     with Path(path).open("r", encoding = "utf-8") as fp:
         payload = yaml.safe_load(fp)
 
-    node_records, edge_records = __split_payload__(payload or {})
-    return __assemble__(node_records, edge_records)
+    nodeRecords, edgeRecords = __splitPayload__(payload or {})
+    return __assemble__(nodeRecords, edgeRecords)
 
 
-def from_parquet(
-        nodes_path : Path,
-        edges_path : Path
+def fromParquet(
+        nodesPath : Path,
+        edgesPath : Path
 ) -> Tuple[List[AbstractNode], List[AbstractEdge]]:
     """
     Read separate Parquet files for nodes and edges and deserialise
@@ -297,62 +297,62 @@ def from_parquet(
     ``None`` before instantiation so pydantic ``Optional`` fields
     accept them cleanly.
 
-    :type  nodes_path: Path
-    :param nodes_path: Path to the nodes Parquet file.
+    :type  nodesPath: Path
+    :param nodesPath: Path to the nodes Parquet file.
 
-    :type  edges_path: Path
-    :param edges_path: Path to the edges Parquet file.
+    :type  edgesPath: Path
+    :param edgesPath: Path to the edges Parquet file.
 
-    :raises KeyError: As in :func:`from_json`.
+    :raises KeyError: As in :func:`fromJson`.
 
     :rtype:   Tuple[List[AbstractNode], List[AbstractEdge]]
     :returns: ``(nodes, edges)`` lists.
     """
 
     import pandas as pd
-    nodes_df = pd.read_parquet(Path(nodes_path))
-    edges_df = pd.read_parquet(Path(edges_path))
+    nodesDf = pd.read_parquet(Path(nodesPath))
+    edgesDf = pd.read_parquet(Path(edgesPath))
 
-    node_records = [
-        __dropna__(row) for row in nodes_df.to_dict(orient = "records")
+    nodeRecords = [
+        __dropna__(row) for row in nodesDf.to_dict(orient = "records")
     ]
-    edge_records = [
-        __dropna__(row) for row in edges_df.to_dict(orient = "records")
+    edgeRecords = [
+        __dropna__(row) for row in edgesDf.to_dict(orient = "records")
     ]
 
-    return __assemble__(node_records, edge_records)
+    return __assemble__(nodeRecords, edgeRecords)
 
 
-def from_csv(
-        nodes_path : Path,
-        edges_path : Path
+def fromCsv(
+        nodesPath : Path,
+        edgesPath : Path
 ) -> Tuple[List[AbstractNode], List[AbstractEdge]]:
     """
     Read separate CSV files for nodes and edges and deserialise them
     into graph objects. ``NaN`` values are replaced with ``None``
     before instantiation.
 
-    :type  nodes_path: Path
-    :param nodes_path: Path to the nodes CSV file.
+    :type  nodesPath: Path
+    :param nodesPath: Path to the nodes CSV file.
 
-    :type  edges_path: Path
-    :param edges_path: Path to the edges CSV file.
+    :type  edgesPath: Path
+    :param edgesPath: Path to the edges CSV file.
 
-    :raises KeyError: As in :func:`from_json`.
+    :raises KeyError: As in :func:`fromJson`.
 
     :rtype:   Tuple[List[AbstractNode], List[AbstractEdge]]
     :returns: ``(nodes, edges)`` lists.
     """
 
     import pandas as pd
-    nodes_df = pd.read_csv(Path(nodes_path))
-    edges_df = pd.read_csv(Path(edges_path))
+    nodesDf = pd.read_csv(Path(nodesPath))
+    edgesDf = pd.read_csv(Path(edgesPath))
 
-    node_records = [
-        __dropna__(row) for row in nodes_df.to_dict(orient = "records")
+    nodeRecords = [
+        __dropna__(row) for row in nodesDf.to_dict(orient = "records")
     ]
-    edge_records = [
-        __dropna__(row) for row in edges_df.to_dict(orient = "records")
+    edgeRecords = [
+        __dropna__(row) for row in edgesDf.to_dict(orient = "records")
     ]
 
-    return __assemble__(node_records, edge_records)
+    return __assemble__(nodeRecords, edgeRecords)

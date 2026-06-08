@@ -52,9 +52,9 @@ class ValidationIssue:
     location : Optional[str] = None
 
 
-def __duplicate_keys__(
+def __duplicateKeys__(
         records : List[Dict[str, Any]],
-        kind_label : str,
+        kindLabel : str,
         code : str
 ) -> List[ValidationIssue]:
     """
@@ -64,8 +64,8 @@ def __duplicate_keys__(
     :type  records: List[Dict[str, Any]]
     :param records: Raw node or edge dictionaries.
 
-    :type  kind_label: str
-    :param kind_label: Human label used in the issue message
+    :type  kindLabel: str
+    :param kindLabel: Human label used in the issue message
         (``"node"`` / ``"edge"``).
 
     :type  code: str
@@ -88,10 +88,10 @@ def __duplicate_keys__(
                 severity = "error",
                 code = code,
                 message = (
-                    f"Duplicate {kind_label} hashKey {key!r} "
+                    f"Duplicate {kindLabel} hashKey {key!r} "
                     f"(first seen at index {seen[key]})."
                 ),
-                location = f"{kind_label}s[{idx}].hashKey",
+                location = f"{kindLabel}s[{idx}].hashKey",
             ))
         else:
             seen[key] = idx
@@ -99,7 +99,7 @@ def __duplicate_keys__(
     return issues
 
 
-def validate_project(
+def validateProject(
         nodes : List[Dict[str, Any]],
         edges : List[Dict[str, Any]],
         manifest : Dict[str, Any]
@@ -138,14 +138,14 @@ def validate_project(
 
     issues : List[ValidationIssue] = []
 
-    issues.extend(__duplicate_keys__(
-        nodes, kind_label = "node", code = "duplicate-node-key"
+    issues.extend(__duplicateKeys__(
+        nodes, kindLabel = "node", code = "duplicate-node-key"
     ))
-    issues.extend(__duplicate_keys__(
-        edges, kind_label = "edge", code = "duplicate-edge-key"
+    issues.extend(__duplicateKeys__(
+        edges, kindLabel = "edge", code = "duplicate-edge-key"
     ))
 
-    node_keys = {
+    nodeKeys = {
         rec.get("hashKey") for rec in nodes
         if isinstance(rec.get("hashKey"), str)
     }
@@ -154,7 +154,7 @@ def validate_project(
         src = rec.get("srcKey")
         dst = rec.get("dstKey")
 
-        if not isinstance(src, str) or src not in node_keys:
+        if not isinstance(src, str) or src not in nodeKeys:
             issues.append(ValidationIssue(
                 severity = "error",
                 code = "orphan-edge-source",
@@ -165,7 +165,7 @@ def validate_project(
                 location = f"edges[{idx}].srcKey",
             ))
 
-        if not isinstance(dst, str) or dst not in node_keys:
+        if not isinstance(dst, str) or dst not in nodeKeys:
             issues.append(ValidationIssue(
                 severity = "error",
                 code = "orphan-edge-destination",
@@ -191,12 +191,12 @@ def validate_project(
                 location = f"edges[{idx}]",
             ))
 
-    known_node_kinds = { kind for kind, _ in iter_nodes() }
-    known_edge_kinds = { kind for kind, _ in iter_edges() }
+    knownNodeKinds = { kind for kind, _ in iter_nodes() }
+    knownEdgeKinds = { kind for kind, _ in iter_edges() }
 
     for idx, rec in enumerate(nodes):
         kind = rec.get("kind")
-        if isinstance(kind, str) and kind not in known_node_kinds:
+        if isinstance(kind, str) and kind not in knownNodeKinds:
             issues.append(ValidationIssue(
                 severity = "error",
                 code = "unknown-node-kind",
@@ -233,7 +233,7 @@ def validate_project(
 
     for idx, rec in enumerate(edges):
         kind = rec.get("kind")
-        if isinstance(kind, str) and kind not in known_edge_kinds:
+        if isinstance(kind, str) and kind not in knownEdgeKinds:
             issues.append(ValidationIssue(
                 severity = "error",
                 code = "unknown-edge-kind",

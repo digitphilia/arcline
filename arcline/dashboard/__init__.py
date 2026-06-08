@@ -16,9 +16,9 @@ process (no auth, no multi-tenant state); multi-user hardening is
 parked for a later phase.
 """
 
-from arcline.dashboard.app import create_app, run
+from arcline.dashboard.app import createApp, run
 
 __all__ = [
-    "create_app",
+    "createApp",
     "run",
 ]
