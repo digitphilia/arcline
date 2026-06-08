@@ -21,6 +21,14 @@ from arcline.historian.exceptions import (
     CacheError,
 )
 from arcline.historian.spec import HistorySpec, HistorianMixin, Aggregation
+from arcline.historian.connection import (
+    DSN_ENV_VAR,
+    getDsn,
+    getEngine,
+    testConnection,
+    disposeEngine,
+    redactDsn,
+)
 
 __all__ = [
     "HistorianError",
@@ -31,4 +39,10 @@ __all__ = [
     "HistorySpec",
     "HistorianMixin",
     "Aggregation",
+    "DSN_ENV_VAR",
+    "getDsn",
+    "getEngine",
+    "testConnection",
+    "disposeEngine",
+    "redactDsn",
 ]
