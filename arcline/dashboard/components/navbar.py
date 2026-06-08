@@ -4,9 +4,9 @@
 Top Navigation Bar Component
 ----------------------------
 
-Builds the dashboard's persistent top :class:`dbc.NavbarSimple` with
-the project brand on the left and one navigation link per top-level
-page on the right.
+Glassmorphism navbar with the project brand on the left, page nav
+in the middle, and a control cluster on the right (DB-status pill,
+theme toggle, global Save button).
 """
 
 import time
@@ -29,7 +29,7 @@ _NAV_LINKS : list = [
 
 
 _DB_STATUS_TTL_S : float = 30.0
-_dbStatusCache : dict = {"expiresAt": 0.0, "color": "danger", "label": "DB: offline"}
+_dbStatusCache : dict = {"expiresAt": 0.0, "color": "danger", "label": "DB offline"}
 
 
 def _resolveDbStatus(now: float) -> tuple:
@@ -38,19 +38,17 @@ def _resolveDbStatus(now: float) -> tuple:
 
     Without the cache, ``testConnection()`` would issue a synchronous
     ``SELECT 1`` on every page navigation; over a 5-second timeout
-    that makes navbar render dominate the request latency. We cache
-    the resolved state for :data:`_DB_STATUS_TTL_S` seconds so that
-    typical navigation reuses the previous probe.
+    that makes navbar render dominate the request latency.
     """
     if now < _dbStatusCache["expiresAt"]:
         return _dbStatusCache["color"], _dbStatusCache["label"]
     dsn = getDsn()
     if dsn is None:
-        color, label = "danger", "DB: offline"
+        color, label = "danger", "DB offline"
     elif testConnection():
-        color, label = "success", "DB: live"
+        color, label = "success", "DB live"
     else:
-        color, label = "warning", "DB: cached-only"
+        color, label = "warning", "DB cached-only"
     _dbStatusCache["color"] = color
     _dbStatusCache["label"] = label
     _dbStatusCache["expiresAt"] = now + _DB_STATUS_TTL_S
@@ -59,12 +57,7 @@ def _resolveDbStatus(now: float) -> tuple:
 
 def _dbStatusPill() -> dbc.Badge:
     """
-    Render the historian DB status pill.
-
-    Three states surfaced to the operator:
-      * green  - DSN set and SELECT 1 succeeded -> live mode
-      * amber  - DSN set but unreachable        -> cached-only fallback
-      * red    - DSN unset                      -> historian offline
+    Render the historian DB status pill (green / amber / red).
     """
     color, label = _resolveDbStatus(time.monotonic())
     return dbc.Badge(
@@ -73,34 +66,70 @@ def _dbStatusPill() -> dbc.Badge:
     )
 
 
-def makeNavbar(projectName : str = "(no project)") -> dbc.NavbarSimple:
+def _themeToggle() -> html.Button:
+    """
+    Theme toggle button wired to the clientside ``arcToggleTheme``
+    helper exposed by ``assets/theme.js``.
+    """
+    return html.Button(
+        "\u25D0", id = "arc-theme-toggle-btn",
+        title = "Toggle theme",
+        className = "arc-theme-toggle ms-2",
+        n_clicks = 0,
+        **{"data-arc-action": "toggle-theme"},
+    )
+
+
+def _saveButton() -> dbc.Button:
+    """
+    Global "Save project" button (wired by visualize callbacks).
+    """
+    return dbc.Button(
+        "Save", id = "arc-global-save-btn", color = "primary",
+        outline = True, size = "sm", className = "ms-2",
+        n_clicks = 0,
+    )
+
+
+def makeNavbar(projectName : str = "(no project)") -> dbc.Navbar:
     """
     Construct the dashboard top navigation bar.
 
-    The brand on the left reads ``"arcline | <projectName>"``;
-    each entry in :data:`_NAV_LINKS` is rendered as a
-    :class:`dbc.NavLink` on the right.
-
     :type  projectName: str
-    :param projectName: The project name to surface alongside the
-        ``"arcline"`` brand label.
+    :param projectName: Project name surfaced alongside the brand.
 
-    :rtype:   dbc.NavbarSimple
+    :rtype:   dbc.Navbar
     :returns: A configured navbar component.
     """
 
-    links = [
-        dbc.NavLink(label, href = href, active = "exact")
-        for label, href in _NAV_LINKS
-    ]
-    links.append(_dbStatusPill())
+    navLinks = dbc.Nav(
+        [
+            dbc.NavLink(label, href = href, active = "exact")
+            for label, href in _NAV_LINKS
+        ],
+        navbar = True, className = "ms-auto me-3",
+    )
 
-    return dbc.NavbarSimple(
-        children = links,
-        brand = f"arcline | {projectName}",
-        brand_href = "/",
-        color = "primary",
-        dark = True,
-        fluid = True,
+    rightCluster = html.Div(
+        [
+            _dbStatusPill(),
+            _themeToggle(),
+            _saveButton(),
+            html.Div(id = "arc-global-save-toast"),
+        ],
+        className = "d-flex align-items-center",
+    )
+
+    brand = dbc.NavbarBrand(
+        f"arcline | {projectName}", href = "/",
+    )
+
+    return dbc.Navbar(
+        dbc.Container(
+            [brand, navLinks, rightCluster],
+            fluid = True, className = "align-items-center",
+        ),
         sticky = "top",
+        className = "arc-navbar",
+        color = None,
     )

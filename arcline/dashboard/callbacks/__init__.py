@@ -15,6 +15,7 @@ dashboard is actually instantiated.
 """
 
 from dash import Dash
+import dash
 
 
 def registerAll(app : Dash) -> None:
@@ -45,3 +46,18 @@ def registerAll(app : Dash) -> None:
     registerEdges(app)
     registerViz(app)
     registerHistory()
+
+    # navbar theme-toggle (clientside; fires window.arcToggleTheme)
+    app.clientside_callback(
+        """
+        function(n) {
+            if (n && window.arcToggleTheme) { window.arcToggleTheme(); }
+            return window.dash_clientside.no_update;
+        }
+        """,
+        # we route into the throwaway toast wrapper just to satisfy
+        # the callback-needs-output contract; no actual change made
+        dash.dependencies.Output("arc-global-save-toast", "children"),
+        dash.dependencies.Input("arc-theme-toggle-btn", "n_clicks"),
+        prevent_initial_call = True,
+    )

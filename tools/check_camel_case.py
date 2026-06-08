@@ -62,6 +62,8 @@ EXEMPT_NAMES: Set[str] = {
     "default_factory", "field_info",
     # Typer / Click
     "no_args_is_help", "add_completion",
+    # Dash component base class (custom-component contract)
+    "available_properties", "available_wildcard_properties",
     # Dash component props / kwargs
     "n_clicks", "is_open", "no_update", "page_container",
     "register_page", "prevent_initial_call", "allow_duplicate",

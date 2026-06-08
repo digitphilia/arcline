@@ -143,7 +143,13 @@ def createApp(
         server = flaskServer,
         use_pages = True,
         pages_folder = "pages",
-        external_stylesheets = [theme],
+        external_stylesheets = [
+            theme,
+            "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+        ],
+        external_scripts = [
+            "https://d3js.org/d3.v7.min.js",
+        ],
         suppress_callback_exceptions = True,
         title = "arcline | Dashboard",
     )
