@@ -10,6 +10,9 @@ page on the right.
 """
 
 import dash_bootstrap_components as dbc
+from dash import html
+
+from arcline.historian.connection import getDsn, testConnection
 
 
 _NAV_LINKS : list = [
@@ -21,6 +24,28 @@ _NAV_LINKS : list = [
     ("Solve", "/dashboard/solve"),
     ("Scenarios", "/dashboard/scenarios"),
 ]
+
+
+def _dbStatusPill() -> dbc.Badge:
+    """
+    Render the historian DB status pill.
+
+    Three states surfaced to the operator:
+      * green  - DSN set and SELECT 1 succeeded -> live mode
+      * amber  - DSN set but unreachable        -> cached-only fallback
+      * red    - DSN unset                      -> historian offline
+    """
+    dsn = getDsn()
+    if dsn is None:
+        color, label = "danger", "DB: offline"
+    elif testConnection():
+        color, label = "success", "DB: live"
+    else:
+        color, label = "warning", "DB: cached-only"
+    return dbc.Badge(
+        label, color = color, pill = True,
+        className = "ms-2", id = "db-status-pill",
+    )
 
 
 def makeNavbar(projectName : str = "(no project)") -> dbc.NavbarSimple:
@@ -43,6 +68,7 @@ def makeNavbar(projectName : str = "(no project)") -> dbc.NavbarSimple:
         dbc.NavLink(label, href = href, active = "exact")
         for label, href in _NAV_LINKS
     ]
+    links.append(_dbStatusPill())
 
     return dbc.NavbarSimple(
         children = links,

@@ -37,7 +37,11 @@ def registerAll(app : Dash) -> None:
     from arcline.dashboard.callbacks.visualize_cb import (
         register as registerViz,
     )
+    from arcline.dashboard.callbacks.history_cb import (
+        register as registerHistory,
+    )
 
     registerNodes(app)
     registerEdges(app)
     registerViz(app)
+    registerHistory()
