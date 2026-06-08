@@ -32,6 +32,15 @@ from arcline.io.readers import (
 from arcline.io.writers import toJson, toJsonRecords, toParquet, toYaml
 from arcline.io.project import Project
 
+# Import the built-in taxonomy for its registry side-effects so that any
+# Project.open() / fromJson() / fromParquet() call can resolve the
+# shipped node and edge kinds ('supplier', 'plant', 'warehouse',
+# 'customer', 'lane', 'production', 'storage'). Without this, the
+# `arcline validate` / `arcline dashboard` CLI entrypoints fail with
+# 'unknown-node-kind' errors because nothing else along their import
+# chain triggers the library subpackage.
+from arcline.graph import library as _library  # noqa: F401
+
 
 def _deprecated(oldName, new):
     def _shim(*args, **kwargs):
