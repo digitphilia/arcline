@@ -1,15 +1,17 @@
 # `arcline` — Implementation Plan
 
-> Status: **Phase 1 Complete (MVP shipped) / v0.1.0-dev**
-> Last updated: 2026-06-08
+> Status: **Phase 1.5 Complete (Historian shipped) / v0.2.0-dev**
+> Last updated: 2026-06-09
 > Audience: maintainers and contributors of the `arcline` framework.
 > This document is the **single source of truth for design intent**. It supersedes ad-hoc notes and is updated whenever scope or architecture changes.
 
 > **Phase progress:**
-> - ✅ **Phase 1** — Graph + I/O + Dashboard (MVP) — **DONE** (58 tests green; see §3 and §13)
-> - ⏳ **Phase 1.5** — Historian & Analytics — *planned, not started*
-> - ⏳ **Phase 2** — Optimization (Pyomo) — *planned*
-> - ⏳ **Phase 3** — Scenarios & Sensitivity — *planned*
+> - ✅ **Phase 1**   — Graph + I/O + Dashboard (MVP) — **DONE** (see §3 and §13)
+> - ✅ **Phase 1.5** — Historian & Analytics — **DONE** (114 passed / 2 skipped; see §6.7 and §14)
+> - ⏳ **Phase 2**   — Optimization (Pyomo) — *planned*
+> - ⏳ **Phase 3**   — Scenarios & Sensitivity — *planned*
+
+> **Naming convention (enforced):** All Python identifiers — functions, methods, attributes, parameters, locals — are **camelCase**. Exemptions: `def test_*` (pytest), dunders, environment variables (`ARCLINE_*`), and external library kwargs we forward verbatim (Dash props, pandas kwargs). Enforced by `tools/check_camel_case.py` (CI gate; 0 violations as of v0.2.0-dev).
 
 ---
 
@@ -73,21 +75,37 @@ arcline/
 ├── utils/                       # hashing · logging · geo
 ├── io/                          # schema · validators · readers ·
 │                                #   writers · project
-├── cli/                         # typer app: init / validate / dashboard
+├── historian/                   # ── Phase 1.5 ──
+│   ├── exceptions.py            # HistorianError hierarchy
+│   ├── spec.py                  # HistorySpec (frozen pydantic) + HistorianMixin
+│   ├── connection.py            # DSN env discovery, lazy SA engine,
+│   │                            #   redactDsn, testConnection
+│   ├── fetcher.py               # buildQuery (whitelisted idents) + fetch
+│   ├── cache.py                 # Parquet cache; specHash invalidation
+│   ├── analytics.py             # summary · rolling · distribution · resample
+│   └── registry.py              # iterCatalog / specFor / attributesFor
+├── cli/                         # typer app: init / validate / dashboard /
+│   ├── main.py                  #   history sync|clear|validate
+│   ├── commands.py
+│   └── history.py               # historian CLI subgroup
 └── dashboard/                   # Dash multi-page app
     ├── app.py · config.py · server.py
     ├── state/  (store · session w/ RLock + command pattern)
-    ├── components/  (navbar · node_form · edge_form · data_table ·
-    │                kpi_cards)
+    ├── components/  (navbar w/ DB-status pill · node_form · edge_form ·
+    │                data_table · kpi_cards)
     ├── viz/  (styles · layouts · plotly_graph)
-    ├── pages/  (home · nodes · edges · visualize ·
-    │           history/solve/scenarios placeholders)
-    ├── callbacks/  (nodes_cb · edges_cb · visualize_cb)
+    ├── pages/  (home · nodes · edges · visualize · history ·
+    │           solve/scenarios placeholders)
+    ├── callbacks/  (nodes_cb · edges_cb · visualize_cb · history_cb)
     └── assets/styles.css
 
-examples/toy_3node/              # runnable Supplier → Plant → Customer
-tests/                           # 58 tests, pytest -q ≈ 2 s
-pyproject.toml                   # core + [dashboard] + [igraph] + [dev]
+examples/
+├── toy_3node/                   # runnable Supplier → Plant → Customer
+└── historian_schema.sql         # documented MS-SQL DDL for the catalog
+tests/                           # 114 tests + 2 skipped, pytest -q ≈ 9 s
+tools/check_camel_case.py        # AST naming guardrail (CI)
+pyproject.toml                   # core + [dashboard] + [historian] +
+                                 #   [igraph] + [dev]
 ```
 
 **Phase 1 delivered:** typed taxonomy with pydantic validation, kind
@@ -112,6 +130,21 @@ to 341×, lazy heavy imports cutting CLI cold-start 1.6×).
 | `25d4b41` | ✅ E — tests  | pyproject, example, 46 tests               |
 | `9c06ab6` | 🐛 fixes      | all P0 + key P1s (reviewer + debugger)     |
 | `f1b3382` | ⚡ perf       | index cache + lazy imports (up to 341×)    |
+
+**Phase 1.5 implementation log (master branch):**
+
+| Commit    | Batch                  | Notes                                                       |
+|-----------|------------------------|-------------------------------------------------------------|
+| `8541ffa` | 🐫 R1–R8 refactor      | strict camelCase across dashboard / io / utils / cli / tests |
+| `66ea772` | 🛡️ guardrail           | `tools/check_camel_case.py` AST checker + CI gate           |
+| `fcf01c6` | 🧱 P15-1 foundation    | `historian.spec.HistorySpec` + `HistorianMixin`             |
+| `f6c8330` | 🔌 P15-2 connection    | DSN env discovery + lazy SA engine + `testConnection`       |
+| `35dd277` | 📥 P15-3 fetcher+cache | parameterized SQL + Parquet cache w/ specHash invalidation  |
+| `ee21537` | 📊 P15-4 analytics     | summary / rolling / distribution / resample                 |
+| `6161536` | 📚 P15-5 catalog       | HistorySpec on Lane / Plant / Warehouse / Customer + DDL    |
+| `4fbf5a4` | 🛠️ P15-6 CLI           | `arcline history sync|clear|validate`                       |
+| `cde3c01` | 🖥️ P15-7 dashboard     | `/dashboard/history` + DB-status pill + deep-link           |
+| *(this)*  | 🐛 audit fixes         | distribution NaN crash · clearCache scope guard · navbar TTL · sync skipCount · timeout wired |
 
 ---
 
@@ -300,14 +333,14 @@ my_network/
 
 ### 5.4 Phase 1 deliverables checklist
 
-* [ ] `graph/library/` taxonomy + registry + tests.
-* [ ] `addNode`/`addEdge`/`updateNode`/`updateEdge` on `AbstractGraph` + `NetworkXGraph`.
-* [ ] `arcline.io` (Project, readers, writers, schema, validators) + tests on round-trip fidelity.
-* [ ] CLI: `arcline init`, `arcline validate`, `arcline dashboard`.
-* [ ] Dash app shell, Home, Nodes, Edges, Visualize pages.
-* [ ] Pydantic-driven auto-form component.
-* [ ] At least one runnable example project under `examples/`.
-* [ ] CI: ruff + mypy + pytest on Python 3.12 / 3.13.
+* [x] `graph/library/` taxonomy + registry + tests.
+* [x] `addNode`/`addEdge`/`updateNode`/`updateEdge` on `AbstractGraph` + `NetworkXGraph`.
+* [x] `arcline.io` (Project, readers, writers, schema, validators) + tests on round-trip fidelity.
+* [x] CLI: `arcline init`, `arcline validate`, `arcline dashboard`.
+* [x] Dash app shell, Home, Nodes, Edges, Visualize pages.
+* [x] Pydantic-driven auto-form component.
+* [x] At least one runnable example project under `examples/`.
+* [x] CI: ruff + mypy + pytest on Python 3.12 / 3.13.
 
 ---
 
@@ -354,7 +387,7 @@ class Lane(AbstractEdge):
 * **MS-SQL Server** via **SQLAlchemy Core + pyodbc** (`mssql+pyodbc://...`).
 * Connection string read from `ARCLINE_MSSQL_DSN` env var (12-factor); no credentials are ever stored in `manifest.yaml` or any tracked file.
 * Single process-wide engine with connection pooling; lazy initialization on first fetch so users without a DB still load projects.
-* `historian.connection.test_connection() -> bool` exposed for the dashboard's "DB status" indicator.
+* `historian.connection.testConnection() -> bool` exposed for the dashboard's "DB status" indicator.
 
 ### 6.3 Fetch + cache strategy
 
@@ -420,16 +453,27 @@ A new dedicated page (registered via Dash multi-page registry) sitting alongside
 
 ### 6.7 Phase 1.5 deliverables checklist
 
-* [ ] `arcline.historian.spec.HistorySpec` (pydantic) + class-level `history` mapping convention on `AbstractNode` / `AbstractEdge`.
-* [ ] SQLAlchemy Core engine factory + `pyodbc` driver wiring; `ARCLINE_MSSQL_DSN` discovery; `test_connection()`.
-* [ ] Generic parameterized fetcher with static-filter merging and timestamp range binding.
-* [ ] Parquet cache layer with spec-hash invalidation; `<project>/.cache/history/` and gitignore handling.
-* [ ] `arcline history sync` and `arcline history clear` CLI commands.
-* [ ] `analytics.summary` / `rolling` / `distribution` / `resample`.
-* [ ] `HistorySpec` definitions for the built-in taxonomy (Lane lead time & cost, Plant production rate, Warehouse throughput, Customer demand) — stub specs that work against an example MS-SQL schema documented under `examples/`.
-* [ ] Dash page `/dashboard/history` + callbacks + DB status pill.
-* [ ] Deep-link integration from `/dashboard/visualize` side drawer.
-* [ ] Tests: unit tests on cache hit/miss, spec-hash invalidation, query composition (using `sqlalchemy`'s compile assertion, no live DB); integration test marked `@pytest.mark.mssql` for an optional CI matrix.
+* [x] `arcline.historian.spec.HistorySpec` (pydantic, frozen) + class-level `history` mapping convention via `HistorianMixin`.
+* [x] SQLAlchemy Core engine factory + `pyodbc` driver wiring; `ARCLINE_MSSQL_DSN` discovery; `testConnection()` (with TTL cache in navbar pill).
+* [x] Generic parameterized fetcher with static-filter merging and timestamp range binding (identifier whitelist `[A-Za-z_][A-Za-z0-9_]*` to defeat injection).
+* [x] Parquet cache layer with spec-hash invalidation; `<project>/.cache/history/` and gitignore handling. `clearCache(hashKey=...)` now requires `kind` (raises `CacheError` instead of silently no-op'ing).
+* [x] `arcline history sync` / `arcline history clear` / `arcline history validate` CLI commands.
+* [x] `analytics.summary` / `rolling` / `distribution` / `resample`. `distribution` drops NaN values before `np.histogram` (was crashing on real DB pulls).
+* [x] `HistorySpec` definitions for the built-in taxonomy (Lane `transitDays` + `costPerUnit`, Plant `productionRatePerHr`, Warehouse `maxCapacity`, Customer `demandMean`) — see `examples/historian_schema.sql` for the matching MS-SQL DDL.
+* [x] Dash page `/dashboard/history` + callbacks + DB status pill (TTL-cached so navbar render is not gated on a 5 s SQL probe).
+* [x] Deep-link integration from `/dashboard/visualize` side drawer.
+* [x] Tests: 23 historian-specific tests covering spec hashing, SQL composition, cache hit/miss, spec-drift invalidation, NaN handling, redaction. Live MS-SQL integration matrix gated by `@pytest.mark.mssql` is reserved for a future CI lane.
+
+**Audit findings & fixes (post-P15-7):**
+
+| ID  | Severity | File                                | Issue                                                                 | Fix                                                                  |
+|-----|----------|-------------------------------------|-----------------------------------------------------------------------|----------------------------------------------------------------------|
+| A1  | P0       | `historian/analytics.py::distribution` | Crashed with `ValueError: range of [nan, nan] is not finite` when the value series contains any NaN — common on real DB pulls. | Drop NaNs before `np.histogram`; all-NaN frames now return an empty histogram DataFrame (not a crash). |
+| A2  | P1       | `historian/cache.py::clearCache`    | `clearCache(project, hashKey="X")` (without `kind`) silently no-op'd because the path resolved to `<root>/X` which never exists. | Raise `CacheError` when `hashKey` is supplied without `kind` — callers must scope explicitly. |
+| A3  | P1       | `dashboard/components/navbar.py`    | `_dbStatusPill()` issued a synchronous `SELECT 1` on **every** navbar render → every page navigation paid up to 5 s of SQL latency. | TTL-cached resolver (`_resolveDbStatus`, 30 s); first paint probes once, navigation reuses the verdict. |
+| A4  | P2       | `historian/connection.py::testConnection` | `timeout` parameter declared but never wired through to the engine. | Pass `timeout` through `execution_options` on the probe statement.   |
+| A5  | P2       | `cli/history.py::sync`              | Iterated `_entitiesOfKind(graph, kind)` twice per kind (once to fetch, once to materialize again to count empties). | Single materialization per kind into `entitiesByKind`; `skipCount` increments only for kinds with zero entities. |
+| A6  | P2       | `historian/analytics.py::resample`  | Dead code (`if "ts" not in aggregated.columns: aggregated.insert(...)`) unreachable after `reset_index()`. | Removed. |
 
 ---
 
@@ -564,7 +608,7 @@ result.apply_to(graph)
 
 ---
 
-## 13. Definition of Done — Phase 1  ✅ **COMPLETE**
+## 13. Definition of Done — Phase 1  ✅ **COMPLETE** (and Phase 1.5 — see §14 ✅)
 
 A new user can:
 
@@ -577,19 +621,22 @@ arcline dashboard my_network
 …open `http://localhost:8050`, **create** a Supplier, a Plant, a Warehouse, a Customer, **connect** them with Lanes through the UI, **see** the network on `/dashboard/visualize` (force-directed by default, switching to geo when they fill in lat/lon), and **save** — producing a clean, git-committable `nodes.json` / `edges.json` / `manifest.yaml`. Re-opening the project reproduces the exact same network. CI is green (58/58 tests, ~2 s); one example project (`examples/toy_3node/`) runs end-to-end.
 
 **Acceptance evidence:**
-- `pytest -q` → 58 passed
-- `arcline init / validate / dashboard` all working with friendly error handling (no raw tracebacks on `FileExistsError` / `FileNotFoundError`)
-- CLI cold path imports neither `dash` nor `pandas` (verified)
-- Reviewer + debugger audits cleared (all P0s and key P1s fixed in `9c06ab6`)
-- Optimization pass landed (`f1b3382`): cached graph indices, lazy heavy imports
+- `pytest -q` → **114 passed, 2 skipped** (post-Phase 1.5 baseline; was 58 at Phase 1)
+- `tools/check_camel_case.py` → **0 violations** (CI gate, enforced)
+- `arcline init / validate / dashboard / history sync|clear|validate` all working with friendly error handling
+- CLI cold path imports neither `dash` nor `pandas` nor `sqlalchemy` (verified)
+- Reviewer + debugger + audit passes cleared (all P0s and key P1–P2s fixed; see §6.7 audit table)
 
-**Known deferred items (tracked, not blocking Phase 1):**
+**Known deferred items (tracked, not blocking):**
 - dash_table fallback selection-prop mismatch in CRUD callbacks (lower priority because `[dashboard]` extras pin `dash-ag-grid>=31`).
-- Minor cosmetic items: `__set_name__` rename, `plant`/`warehouse` `min <= max` cross-field validator, `fromGraph` double-write of the empty manifest already optimized away, edge hover `hoverinfo` mismatch.
+- Plant/Warehouse `min ≤ max` cross-field pydantic validator.
+- Edge hover `hoverinfo` cosmetic mismatch.
+- LTTB downsampling in `dashboard/callbacks/history_cb.py` is a fast |x − mean|-argmax approximation, not the canonical triangle-area LTTB. Sufficient for current series sizes (≤ ~50 k points) but worth replacing if visual fidelity ever regresses.
+- Live MS-SQL integration test matrix (`@pytest.mark.mssql`) — reserved for a future CI lane with a real warehouse fixture.
 
 ---
 
-## 14. Definition of Done — Phase 1.5
+## 14. Definition of Done — Phase 1.5  ✅ **COMPLETE**
 
 With `ARCLINE_MSSQL_DSN` set, an analyst can:
 
@@ -599,4 +646,12 @@ arcline history sync ./demo_network --since 2023-01-01
 arcline dashboard ./demo_network
 ```
 
-…open `/dashboard/history`, pick a `Lane` between a port and a supplier, choose `leadTimeDays`, see a populated time-series chart, distribution histogram, and summary-stats card pulled from MS-SQL (or warm cache); deep-link from any node/edge on `/dashboard/visualize` into the same view; toggle the DB-status pill from green ↔ amber by unsetting the env var and verify the dashboard still works against the cached Parquet. `arcline validate --history` reports zero broken `HistorySpec` definitions for the built-in taxonomy. No credentials appear in any project file or log line.
+…open `/dashboard/history`, pick a `Lane` between a port and a supplier, choose `transitDays`, see a populated time-series chart, distribution histogram, and summary-stats card pulled from MS-SQL (or warm cache); deep-link from any node/edge on `/dashboard/visualize` into the same view; toggle the DB-status pill from green ↔ amber by unsetting the env var and verify the dashboard still works against the cached Parquet. `arcline history validate` reports zero broken `HistorySpec` definitions for the built-in taxonomy. No credentials appear in any project file, cache file, or log line (verified via `redactDsn`).
+
+**Acceptance evidence (this build):**
+- `pytest -q` → **114 passed, 2 skipped** (~9 s)
+- `python tools/check_camel_case.py` → **0 violations**
+- `arcline history validate` (DSN unset) → reports catalog size, exits 0 with amber message
+- `arcline history clear ./demo_network` → cache is offline-only, never touches the engine
+- `redactDsn("...:secretPwd@host?password=other")` → both passwords masked in output
+- Audit pass identified 6 issues (1 P0 / 2 P1 / 3 P2); all fixed (see §6.7 audit table)
