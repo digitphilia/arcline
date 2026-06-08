@@ -344,6 +344,77 @@ my_network/
 
 ---
 
+## 5.5 Taxonomy & Enum Design ✅ **COMPLETE**
+
+The built-in taxonomy under `arcline/graph/library/` introduces explicit `*Node` / `*Edge` leaf classes that inherit from a small set of intermediate abstract bases for DRY, plus a typed Enum catalogue for every categorical field.
+
+### 5.5.1 Class hierarchy (intermediates introduced for DRY)
+
+```
+AbstractNode
+├── SourceNode    (canShip=True,  canStore=False, canManufacture=False)
+│   └── SupplierNode
+├── FacilityNode  (canShip=True,  canStore=True,  canManufacture=False)
+│   ├── PlantNode      (canManufacture=True)
+│   └── WarehouseNode  (alias: DistributionCenterNode)
+└── DemandNode    (canShip=False, canStore=False, canManufacture=False)
+    └── CustomerNode
+
+AbstractEdge
+└── FlowEdge          (carriesProduct=True, carriesInfo=False)
+    ├── TransportEdge
+    │   └── LaneEdge
+    ├── ProductionEdge
+    └── StorageEdge
+```
+
+Common fields are lifted to the intermediates:
+- `FacilityNode`: `minCapacity`, `maxCapacity`, `operatingCostPerHr`, `status`, `ownership`, `shift` (+ `@model_validator` for `minCapacity ≤ maxCapacity`).
+- `FlowEdge`: `costPerUnit`, `capacityPerPeriod`.
+- `TransportEdge`: `mode`, `transitDays`.
+
+### 5.5.2 Enum catalogue (`arcline/graph/enums.py`)
+
+All categorical fields use `_CamelStrEnum` (str-Enum subclasses) which JSON-serialise as their UPPER `.name` and accept any case-variant via a case-insensitive `_missing_` hook (so hand-written `mode: "road"` in JSON still loads):
+
+| Enum | Members | Consumer |
+|---|---|---|
+| `TransportationMode` | `ROAD`, `RAIL`, `SEA`, `AIR` | `LaneEdge.mode` |
+| `FacilityStatus` | `PLANNED`, `OPEN`, `CLOSED`, `DECOMMISSIONED` | `FacilityNode.status` |
+| `OwnershipType` | `OWNED`, `LEASED`, `THIRD_PARTY` | `FacilityNode.ownership` |
+| `OperationalShift` | `DAY`, `NIGHT`, `TWENTY_FOUR_SEVEN` | `FacilityNode.shift` |
+| `StorageType` | `AMBIENT`, `COLD_CHAIN`, `FROZEN`, `HAZMAT` | `WarehouseNode.storageType`, `StorageEdge.storageType` |
+| `CustomerSegment` | `RETAIL`, `WHOLESALE`, `B2B`, `B2C` | `CustomerNode.segment` |
+| `LaneServiceLevel` | `STANDARD`, `EXPEDITED`, `OVERNIGHT` | `LaneEdge.serviceLevel` |
+| `Currency` | `USD`, `EUR`, `GBP`, `INR`, `JPY` | declared, wired in Phase 2 |
+| `UnitOfMeasure` | `EACH`, `CASE`, `PALLET`, `KG`, `TON`, `LITRE` | declared, wired in Phase 2 |
+
+### 5.5.3 Capability flags (`supports()`)
+
+Every node and edge exposes `supports(capability: str) -> bool` which reads ClassVar booleans on the class (`canShip`, `canStore`, `canManufacture`, `canDemand` on nodes; `carriesProduct`, `carriesInfo` on edges). Downstream tooling (Phase 2 optimizer compiler, dashboard form gating, validators) introspects capabilities instead of writing `isinstance()` ladders.
+
+### 5.5.4 Public API surface
+
+Top-level re-exports under `arcline/__init__.py`:
+
+```python
+from arcline import (
+    SupplierNode, PlantNode, WarehouseNode, DistributionCenterNode, CustomerNode,
+    LaneEdge, ProductionEdge, StorageEdge,
+    SourceNode, FacilityNode, DemandNode, FlowEdge, TransportEdge,
+    TransportationMode, FacilityStatus, OwnershipType, OperationalShift,
+    StorageType, CustomerSegment, LaneServiceLevel, Currency, UnitOfMeasure,
+)
+```
+
+### 5.5.5 Acceptance evidence
+
+- `pytest -q` → **154 passed** (12 enum + 17 hierarchy tests in addition to the Phase 1 + 1.5 baseline).
+- `tools/check_camel_case.py` → rc=0.
+- Public API: `from arcline import PlantNode, TransportationMode` resolves.
+
+---
+
 ## 6. Phase 1.5 — Historian & Analytics (`arcline.historian`)
 
 **Goal:** every node and edge attribute can be transparently traced back to its historic time-series in a MS-SQL Server data warehouse, fetched on demand, cached locally, and analysed (numerically and visually) inside the dashboard. This phase ships **right after the Phase 1 MVP, before optimization**, so analysts get value before any solver is wired in. Stochastic optimization in later phases will piggy-back on the same fetched history.

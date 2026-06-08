@@ -15,7 +15,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from arcline.graph.library import Customer, Plant, Supplier
+from arcline.graph.library import CustomerNode, PlantNode, SupplierNode
 from arcline.io import (
     Project,
     fromCsv,
@@ -53,10 +53,10 @@ def test_typed_classes_preserved(sampleProject : Project) -> None:
     reopened = Project.open(sampleProject.path)
     classes = {type(node) for node in reopened.nodes}
 
-    assert classes.issubset({Supplier, Plant, Customer})
-    assert Supplier in classes
-    assert Plant in classes
-    assert Customer in classes
+    assert classes.issubset({SupplierNode, PlantNode, CustomerNode})
+    assert SupplierNode in classes
+    assert PlantNode in classes
+    assert CustomerNode in classes
 
 
 def test_validate_clean_project_has_no_errors(

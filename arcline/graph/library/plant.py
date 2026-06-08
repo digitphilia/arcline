@@ -4,42 +4,32 @@
 Built-in Plant Node Definition
 ------------------------------
 
-A :class:`Plant` represents a manufacturing facility that converts
-inputs into outputs at a nominal hourly rate, bounded by minimum and
-maximum throughput capacities.
+A :class:`PlantNode` represents a manufacturing facility that converts
+inputs into outputs at a nominal hourly rate. Capacity bounds, status,
+ownership, and shift are inherited from :class:`FacilityNode`.
 """
 
 from pydantic import Field
 from typing import ClassVar, Dict, Optional
 
-from arcline.graph.base.nodes import AbstractNode
+from arcline.graph.library._intermediates import FacilityNode
 from arcline.graph.registry import register_node
 from arcline.historian.spec import HistorySpec
 
 
-class Plant(AbstractNode):
+class PlantNode(FacilityNode):
     """
-    Concrete supply-chain node modeling a manufacturing plant with
-    a nominal hourly production rate and capacity bounds.
+    Concrete supply-chain node modeling a manufacturing plant.
 
     :param productionRatePerHr: Nominal output rate, in units / hour.
-    :param minCapacity: Lower bound of the operational throughput.
-    :param maxCapacity: Upper bound of the operational throughput.
     """
 
     kind : ClassVar[str] = "plant"
 
+    canManufacture : ClassVar[bool] = True
+
     productionRatePerHr : float = Field(
         0.0, ge = 0.0, description = "Nominal Production Rate per Hour"
-    )
-
-    minCapacity : float = Field(
-        0.0, ge = 0.0, description = "Min. Capacity of the Plant"
-    )
-
-    maxCapacity : float = Field(
-        float("inf"), gt = 0.0,
-        description = "Max. Capacity of the Plant"
     )
 
     history : ClassVar[Dict[str, HistorySpec]] = {
@@ -56,20 +46,16 @@ class Plant(AbstractNode):
 
     @property
     def imagePath(self) -> Optional[str]:
-        """
-        Default plant icon shipped with the package.
-        """
+        """Default plant icon shipped with the package."""
 
         return "./icons/graph.png"
 
 
     @property
     def nodeColor(self) -> Optional[str]:
-        """
-        Default plant node color in HEX.
-        """
+        """Default plant node color in HEX."""
 
         return "#42B3E3"
 
 
-register_node(Plant)
+register_node(PlantNode)

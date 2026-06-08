@@ -4,18 +4,21 @@
 Built-in Storage Edge Definition
 --------------------------------
 
-A :class:`Storage` edge models inventory-holding time at a node, with
-a per-unit holding cost and an upper bound on hold duration.
+A :class:`StorageEdge` models inventory-holding time at a node, with a
+per-unit holding cost and an upper bound on hold duration.
+``costPerUnit`` and ``capacityPerPeriod`` are inherited from
+:class:`FlowEdge`.
 """
 
 from pydantic import Field
 from typing import ClassVar, Optional
 
-from arcline.graph.base.edges import AbstractEdge
+from arcline.graph.enums import StorageType
+from arcline.graph.library._intermediates import FlowEdge
 from arcline.graph.registry import register_edge
 
 
-class Storage(AbstractEdge):
+class StorageEdge(FlowEdge):
     """
     Concrete supply-chain edge modeling an inventory-holding arc.
 
@@ -23,6 +26,8 @@ class Storage(AbstractEdge):
         the inventory remains in storage.
     :param maxHoldDays: Maximum number of days the inventory may be
         held; defaults to no limit (``inf``).
+    :param storageType: Climate / handling regime for stored product;
+        defaults to :attr:`StorageType.AMBIENT`.
     """
 
     kind : ClassVar[str] = "storage"
@@ -36,14 +41,17 @@ class Storage(AbstractEdge):
         description = "Maximum Hold Duration in Days"
     )
 
+    storageType : StorageType = Field(
+        default = StorageType.AMBIENT,
+        description = "Climate / Handling Regime",
+    )
+
 
     @property
     def edgeColor(self) -> Optional[str]:
-        """
-        Default storage edge color in HEX.
-        """
+        """Default storage edge color in HEX."""
 
         return "#795548"
 
 
-register_edge(Storage)
+register_edge(StorageEdge)

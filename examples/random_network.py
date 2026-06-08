@@ -5,7 +5,7 @@ Random Supply-Chain Network Generator
 =====================================
 
 A runnable example that synthesises a random four-tier supply chain
-(Supplier -> Plant -> Warehouse -> Customer), persists it as a full
+(SupplierNode -> PlantNode -> WarehouseNode -> CustomerNode), persists it as a full
 :mod:`arcline` project on disk, and **additionally** dumps the bulk
 ``nodes.parquet`` / ``edges.parquet`` pair so the same data is
 available to downstream Pandas / Spark consumers.
@@ -47,11 +47,11 @@ from pathlib import Path
 from typing import List, Tuple
 
 from arcline.graph.builder import NetworkBuilder
-from arcline.graph.library.customer import Customer
-from arcline.graph.library.lane import Lane
-from arcline.graph.library.plant import Plant
-from arcline.graph.library.supplier import Supplier
-from arcline.graph.library.warehouse import Warehouse
+from arcline.graph.library.customer import CustomerNode
+from arcline.graph.library.lane import LaneEdge
+from arcline.graph.library.plant import PlantNode
+from arcline.graph.library.supplier import SupplierNode
+from arcline.graph.library.warehouse import WarehouseNode
 from arcline.io import Project, toParquet
 
 
@@ -68,12 +68,12 @@ def _jitterLatLon(rng : random.Random) -> Tuple[float, float]:
 
 
 def _buildSuppliers(builder : NetworkBuilder, count : int,
-                    rng : random.Random) -> List[Supplier]:
-    out : List[Supplier] = []
+                    rng : random.Random) -> List[SupplierNode]:
+    out : List[SupplierNode] = []
     for index in range(count):
         lat, lon = _jitterLatLon(rng)
-        node = Supplier(
-            name = f"Supplier-{index + 1:02d}",
+        node = SupplierNode(
+            name = f"SupplierNode-{index + 1:02d}",
             hashKey = f"N-S{index + 1:02d}",
             latitude = lat,
             longitude = lon,
@@ -85,13 +85,13 @@ def _buildSuppliers(builder : NetworkBuilder, count : int,
 
 
 def _buildPlants(builder : NetworkBuilder, count : int,
-                 rng : random.Random) -> List[Plant]:
-    out : List[Plant] = []
+                 rng : random.Random) -> List[PlantNode]:
+    out : List[PlantNode] = []
     for index in range(count):
         lat, lon = _jitterLatLon(rng)
         maxCap = float(rng.randint(5_000, 25_000))
-        node = Plant(
-            name = f"Plant-{index + 1:02d}",
+        node = PlantNode(
+            name = f"PlantNode-{index + 1:02d}",
             hashKey = f"N-P{index + 1:02d}",
             latitude = lat,
             longitude = lon,
@@ -104,12 +104,12 @@ def _buildPlants(builder : NetworkBuilder, count : int,
 
 
 def _buildWarehouses(builder : NetworkBuilder, count : int,
-                     rng : random.Random) -> List[Warehouse]:
-    out : List[Warehouse] = []
+                     rng : random.Random) -> List[WarehouseNode]:
+    out : List[WarehouseNode] = []
     for index in range(count):
         lat, lon = _jitterLatLon(rng)
         maxCap = float(rng.randint(10_000, 60_000))
-        node = Warehouse(
+        node = WarehouseNode(
             name = f"DC-{index + 1:02d}",
             hashKey = f"N-W{index + 1:02d}",
             latitude = lat,
@@ -122,13 +122,13 @@ def _buildWarehouses(builder : NetworkBuilder, count : int,
 
 
 def _buildCustomers(builder : NetworkBuilder, count : int,
-                    rng : random.Random) -> List[Customer]:
-    out : List[Customer] = []
+                    rng : random.Random) -> List[CustomerNode]:
+    out : List[CustomerNode] = []
     for index in range(count):
         lat, lon = _jitterLatLon(rng)
         mean = round(rng.uniform(50.0, 500.0), 2)
-        node = Customer(
-            name = f"Customer-{index + 1:02d}",
+        node = CustomerNode(
+            name = f"CustomerNode-{index + 1:02d}",
             hashKey = f"N-C{index + 1:02d}",
             latitude = lat,
             longitude = lon,
@@ -147,7 +147,7 @@ def _connectTier(builder : NetworkBuilder, upstream : List, downstream : List,
                  rng : random.Random) -> int:
     """
     Connect every ``upstream`` node to ``fanout`` random ``downstream``
-    nodes via a :class:`Lane`. Returns the number of edges created.
+    nodes via a :class:`LaneEdge`. Returns the number of edges created.
     """
 
     edgeCount = 0
@@ -156,7 +156,7 @@ def _connectTier(builder : NetworkBuilder, upstream : List, downstream : List,
         for dst in targets:
             edgeCount += 1
             builder.connect(
-                src, dst, cls = Lane,
+                src, dst, cls = LaneEdge,
                 name = f"{prefix}-{edgeCount:04d}",
                 hashKey = f"E-{prefix}-{edgeCount:04d}",
                 distanceKm = round(rng.uniform(50.0, 2000.0), 1),
@@ -178,7 +178,7 @@ def generateNetwork(
     Build a random four-tier supply chain and return the populated
     :class:`NetworkBuilder`.
 
-    Tiers connect: Supplier -> Plant -> Warehouse -> Customer with
+    Tiers connect: SupplierNode -> PlantNode -> WarehouseNode -> CustomerNode with
     deterministic fanouts (each upstream node feeds 2 downstream
     nodes) so the resulting network is connected for any reasonable
     tier sizing.

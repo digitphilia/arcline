@@ -8,7 +8,7 @@
     "distanceKm": 285.0,
     "costPerUnit": 4.50,
     "transitDays": 2.0,
-    "mode": "road"
+    "mode": "ROAD"
   },
   {
     "kind": "lane",
@@ -19,6 +19,6 @@
     "distanceKm": 510.0,
     "costPerUnit": 3.75,
     "transitDays": 3.0,
-    "mode": "road"
+    "mode": "ROAD"
   }
 ]

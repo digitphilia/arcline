@@ -7,24 +7,24 @@ Phase 1.5 - P15-5 (built-in catalog) tests.
 from __future__ import annotations
 
 from arcline.historian import HistorySpec, specFor, attributesFor, iterCatalog
-from arcline.graph.library.lane import Lane
-from arcline.graph.library.plant import Plant
-from arcline.graph.library.warehouse import Warehouse
-from arcline.graph.library.customer import Customer
+from arcline.graph.library.lane import LaneEdge
+from arcline.graph.library.plant import PlantNode
+from arcline.graph.library.warehouse import WarehouseNode
+from arcline.graph.library.customer import CustomerNode
 
 
 def test_lane_hasTransitDaysAndCostHistory():
-    assert "transitDays" in Lane.history
-    assert "costPerUnit" in Lane.history
-    spec = Lane.history["transitDays"]
+    assert "transitDays" in LaneEdge.history
+    assert "costPerUnit" in LaneEdge.history
+    spec = LaneEdge.history["transitDays"]
     assert isinstance(spec, HistorySpec)
     assert spec.qualifiedTable() == "dwh.fact_lane_lead_time"
 
 
 def test_plant_warehouse_customer_haveHistory():
-    assert "productionRatePerHr" in Plant.history
-    assert "maxCapacity" in Warehouse.history
-    assert "demandMean" in Customer.history
+    assert "productionRatePerHr" in PlantNode.history
+    assert "maxCapacity" in WarehouseNode.history
+    assert "demandMean" in CustomerNode.history
 
 
 def test_specFor_lookup():
@@ -57,6 +57,6 @@ def test_iterCatalog_includesAllBuiltins():
 
 
 def test_specHash_isStableAcrossInstances():
-    spec1 = Lane.history["transitDays"]
-    spec2 = Lane.history["transitDays"]
+    spec1 = LaneEdge.history["transitDays"]
+    spec2 = LaneEdge.history["transitDays"]
     assert spec1.specHash() == spec2.specHash()

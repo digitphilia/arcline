@@ -62,6 +62,26 @@ class AbstractNode(BaseModel, HistorianMixin, ABC):
     )
 
 
+    def supports(self, capability : str) -> bool:
+        """
+        Introspect the class-level capability flag named ``capability``
+        and return its boolean value. Returns ``False`` when the flag
+        is undeclared - safe-by-default for capabilities a class
+        chooses not to advertise.
+
+        :type  capability: str
+        :param capability: The capability flag name to look up
+            (e.g. ``"canShip"``, ``"canStore"``,
+            ``"canManufacture"``, ``"canDemand"``).
+
+        :rtype:   bool
+        :returns: The class-level boolean flag, or ``False`` when
+            the flag is absent.
+        """
+
+        return bool(getattr(self.__class__, capability, False))
+
+
     @property
     @abstractmethod
     def imagePath(self) -> Optional[str]:

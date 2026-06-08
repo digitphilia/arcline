@@ -13,12 +13,12 @@ Exercises :class:`arcline.graph.builder.NetworkBuilder` and the
 import pytest
 
 from arcline.graph.builder import NetworkBuilder
-from arcline.graph.library import Customer, Lane, Plant, Supplier
+from arcline.graph.library import CustomerNode, LaneEdge, PlantNode, SupplierNode
 
 
 def test_build_minimal_graph() -> None:
     builder = NetworkBuilder()
-    builder.add(Supplier(name = "S1", hashKey = "N-S1"))
+    builder.add(SupplierNode(name = "S1", hashKey = "N-S1"))
     graph = builder.build()
 
     assert graph.numNodes == 1
@@ -32,19 +32,19 @@ def test_build_with_edges(sampleGraph) -> None:
 
 def test_duplicate_hashkey_rejected() -> None:
     builder = NetworkBuilder()
-    builder.add(Supplier(name = "S1", hashKey = "N-DUP"))
+    builder.add(SupplierNode(name = "S1", hashKey = "N-DUP"))
 
     with pytest.raises(ValueError):
-        builder.add(Supplier(name = "S2", hashKey = "N-DUP"))
+        builder.add(SupplierNode(name = "S2", hashKey = "N-DUP"))
 
 
 def test_orphan_edge_rejected() -> None:
     builder = NetworkBuilder()
-    sIn = builder.add(Supplier(name = "S", hashKey = "N-S"))
-    pIn = builder.add(Plant(name = "P", hashKey = "N-P"))
+    sIn = builder.add(SupplierNode(name = "S", hashKey = "N-S"))
+    pIn = builder.add(PlantNode(name = "P", hashKey = "N-P"))
 
-    orphan = Plant(name = "Orphan", hashKey = "N-ORPH")
-    builder._edges.append(Lane(
+    orphan = PlantNode(name = "Orphan", hashKey = "N-ORPH")
+    builder._edges.append(LaneEdge(
         name = "bad", hashKey = "E-BAD",
         srcNode = sIn, dstNode = orphan,
         distanceKm = 1.0, costPerUnit = 1.0,
@@ -59,7 +59,7 @@ def test_orphan_edge_rejected() -> None:
 
 
 def test_add_node_mutator(sampleGraph) -> None:
-    newNode = Supplier(name = "S2", hashKey = "N-S2")
+    newNode = SupplierNode(name = "S2", hashKey = "N-S2")
     before = sampleGraph.numNodes
     sampleGraph.addNode(newNode)
 
@@ -105,7 +105,7 @@ def test_add_edge_mutator(sampleGraph) -> None:
         if node.hashKey == "N-P1"
     )
 
-    parallel = Lane(
+    parallel = LaneEdge(
         name = "S1->P1 #2", hashKey = "E-S1P1-ALT",
         srcNode = src, dstNode = dst,
         distanceKm = 110.0, costPerUnit = 2.7,
@@ -119,7 +119,7 @@ def test_add_edge_mutator(sampleGraph) -> None:
 
 def test_update_edge_endpoint_change_rejected(sampleGraph) -> None:
     edge = sampleGraph.edges[0]
-    other = Customer(name = "Other", hashKey = "N-OTHER")
+    other = CustomerNode(name = "Other", hashKey = "N-OTHER")
 
     with pytest.raises(ValueError):
         sampleGraph.updateEdge(edge, srcNode = other)
@@ -137,8 +137,8 @@ def test_graph_edges_by_key_uses_dst() -> None:
     """Regression: ``_edgesByKey`` keyed by (src, dst), not (src, src)."""
 
     builder = NetworkBuilder()
-    src = builder.add(Supplier(name = "S1", hashKey = "N-S1"))
-    dst = builder.add(Plant(name = "P1", hashKey = "N-P1"))
+    src = builder.add(SupplierNode(name = "S1", hashKey = "N-S1"))
+    dst = builder.add(PlantNode(name = "P1", hashKey = "N-P1"))
     edge = builder.connect(
         src, dst, name = "S1->P1", hashKey = "E-S1P1",
         distanceKm = 1.0, costPerUnit = 1.0,

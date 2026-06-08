@@ -4,22 +4,18 @@
 Built-in Supplier Node Definition
 ---------------------------------
 
-A :class:`Supplier` represents an upstream vendor that feeds raw
-material or components into a supply-chain network. The class is a
-concrete implementation of :class:`arcline.graph.base.AbstractNode`
-and is auto-registered with the :mod:`arcline.graph.registry` on
-import so that polymorphic (de)serialization can reconstruct
-instances from a saved ``"kind": "supplier"`` record.
+A :class:`SupplierNode` represents an upstream vendor that feeds raw
+material or components into a supply-chain network.
 """
 
 from pydantic import Field
 from typing import ClassVar, Optional
 
-from arcline.graph.base.nodes import AbstractNode
+from arcline.graph.library._intermediates import SourceNode
 from arcline.graph.registry import register_node
 
 
-class Supplier(AbstractNode):
+class SupplierNode(SourceNode):
     """
     Concrete supply-chain node modeling an upstream vendor with a
     nominal lead time and a reliability score in ``[0, 1]``.
@@ -44,20 +40,16 @@ class Supplier(AbstractNode):
 
     @property
     def imagePath(self) -> Optional[str]:
-        """
-        Default vendor icon shipped with the package.
-        """
+        """Default vendor icon shipped with the package."""
 
         return "./icons/vendor.png"
 
 
     @property
     def nodeColor(self) -> Optional[str]:
-        """
-        Default supplier node color in HEX.
-        """
+        """Default supplier node color in HEX."""
 
         return "#F2A65A"
 
 
-register_node(Supplier)
+register_node(SupplierNode)

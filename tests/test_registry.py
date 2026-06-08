@@ -15,13 +15,13 @@ import pytest
 
 from arcline.graph.base.nodes import AbstractNode
 from arcline.graph.library import (
-    Customer,
-    Lane,
-    Plant,
-    Production,
-    Storage,
-    Supplier,
-    Warehouse,
+    CustomerNode,
+    LaneEdge,
+    PlantNode,
+    ProductionEdge,
+    StorageEdge,
+    SupplierNode,
+    WarehouseNode,
 )
 from arcline.graph.registry import (
     ArclineRegistryError,
@@ -33,16 +33,16 @@ from arcline.graph.registry import (
 
 
 def test_resolve_node_known_kinds() -> None:
-    assert resolve_node("supplier") is Supplier
-    assert resolve_node("plant") is Plant
-    assert resolve_node("warehouse") is Warehouse
-    assert resolve_node("customer") is Customer
+    assert resolve_node("supplier") is SupplierNode
+    assert resolve_node("plant") is PlantNode
+    assert resolve_node("warehouse") is WarehouseNode
+    assert resolve_node("customer") is CustomerNode
 
 
 def test_resolve_edge_known_kinds() -> None:
-    assert resolve_edge("lane") is Lane
-    assert resolve_edge("production") is Production
-    assert resolve_edge("storage") is Storage
+    assert resolve_edge("lane") is LaneEdge
+    assert resolve_edge("production") is ProductionEdge
+    assert resolve_edge("storage") is StorageEdge
 
 
 def test_unknown_kind_raises() -> None:
@@ -51,9 +51,9 @@ def test_unknown_kind_raises() -> None:
 
 
 def test_duplicate_registration_idempotent() -> None:
-    register_node(Supplier)
-    register_node(Supplier)
-    assert resolve_node("supplier") is Supplier
+    register_node(SupplierNode)
+    register_node(SupplierNode)
+    assert resolve_node("supplier") is SupplierNode
 
 
 def test_duplicate_kind_different_class_raises() -> None:

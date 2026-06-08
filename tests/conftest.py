@@ -18,7 +18,12 @@ import pytest
 from arcline.graph.backends.networkx import NetworkXGraph
 from arcline.graph.base.edges import AbstractEdge
 from arcline.graph.base.nodes import AbstractNode
-from arcline.graph.library import Customer, Lane, Plant, Supplier
+from arcline.graph.library import (
+    CustomerNode,
+    LaneEdge,
+    PlantNode,
+    SupplierNode,
+)
 from arcline.io import Project
 
 
@@ -34,12 +39,16 @@ def sampleNodes() -> List[AbstractNode]:
     """Three typed nodes covering supplier, plant, customer."""
 
     return [
-        Supplier(
+        SupplierNode(
             name = "S1", hashKey = "N-S1", leadTimeDays = 3.0,
             latitude = 12.97, longitude = 77.59,
         ),
-        Plant(name = "P1", hashKey = "N-P1", maxCapacity = 1000.0),
-        Customer(name = "C1", hashKey = "N-C1", demandMean = 50.0),
+        PlantNode(
+            name = "P1", hashKey = "N-P1", maxCapacity = 1000.0
+        ),
+        CustomerNode(
+            name = "C1", hashKey = "N-C1", demandMean = 50.0
+        ),
     ]
 
 
@@ -51,17 +60,17 @@ def sampleEdges(
 
     src, plant, cust = sampleNodes
     return [
-        Lane(
+        LaneEdge(
             name = "S1->P1", hashKey = "E-S1P1",
             srcNode = src, dstNode = plant,
             distanceKm = 100.0, costPerUnit = 2.5,
-            transitDays = 2.0, mode = "road",
+            transitDays = 2.0, mode = "ROAD",
         ),
-        Lane(
+        LaneEdge(
             name = "P1->C1", hashKey = "E-P1C1",
             srcNode = plant, dstNode = cust,
             distanceKm = 50.0, costPerUnit = 1.5,
-            transitDays = 1.0, mode = "road",
+            transitDays = 1.0, mode = "ROAD",
         ),
     ]
 

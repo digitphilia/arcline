@@ -4,28 +4,28 @@
 Built-in Lane Edge Definition
 -----------------------------
 
-A :class:`Lane` represents a transportation arc between two nodes -
-distance, unit cost, transit days, and a transport mode are the four
-core attributes that drive flow / cost optimization on the lane.
+A :class:`LaneEdge` represents a transportation arc between two nodes.
+``mode`` and ``transitDays`` are inherited from :class:`TransportEdge`;
+``costPerUnit`` and ``capacityPerPeriod`` are inherited from
+:class:`FlowEdge`.
 """
 
 from pydantic import Field
-from typing import ClassVar, Dict, Literal, Optional
+from typing import ClassVar, Dict, Optional
 
-from arcline.graph.base.edges import AbstractEdge
+from arcline.graph.enums import LaneServiceLevel
+from arcline.graph.library._intermediates import TransportEdge
 from arcline.graph.registry import register_edge
 from arcline.historian.spec import HistorySpec
 
 
-class Lane(AbstractEdge):
+class LaneEdge(TransportEdge):
     """
     Concrete supply-chain edge modeling a transportation lane.
 
     :param distanceKm: Lane distance in kilometres.
-    :param costPerUnit: Variable cost per unit shipped on the lane.
-    :param transitDays: Nominal transit time in days.
-    :param mode: Transportation mode; one of ``"road"``, ``"rail"``,
-        ``"sea"`` or ``"air"``.
+    :param serviceLevel: Commercial service tier; defaults to
+        :attr:`LaneServiceLevel.STANDARD`.
     """
 
     kind : ClassVar[str] = "lane"
@@ -34,16 +34,9 @@ class Lane(AbstractEdge):
         0.0, ge = 0.0, description = "Lane Distance in Kilometres"
     )
 
-    costPerUnit : float = Field(
-        0.0, ge = 0.0, description = "Variable Unit Cost on the Lane"
-    )
-
-    transitDays : float = Field(
-        0.0, ge = 0.0, description = "Nominal Transit Time in Days"
-    )
-
-    mode : Literal["road", "rail", "sea", "air"] = Field(
-        "road", description = "Transportation Mode"
+    serviceLevel : LaneServiceLevel = Field(
+        default = LaneServiceLevel.STANDARD,
+        description = "Commercial Service Level",
     )
 
     history : ClassVar[Dict[str, HistorySpec]] = {
@@ -69,11 +62,9 @@ class Lane(AbstractEdge):
 
     @property
     def edgeColor(self) -> Optional[str]:
-        """
-        Default lane edge color in HEX.
-        """
+        """Default lane edge color in HEX."""
 
         return "#5C6BC0"
 
 
-register_edge(Lane)
+register_edge(LaneEdge)

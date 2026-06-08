@@ -36,7 +36,7 @@ def __nodeRecord__(node : AbstractNode) -> Dict[str, Any]:
         export.
     """
 
-    payload = node.model_dump()
+    payload = node.model_dump(mode = "json")
     record : Dict[str, Any] = {"kind": type(node).kind}
     record.update(payload)
     return record
@@ -54,7 +54,7 @@ def __edgeRecord__(edge : AbstractEdge) -> Dict[str, Any]:
     :returns: A flat dictionary suitable for export.
     """
 
-    payload = edge.model_dump(exclude = {"srcNode", "dstNode"})
+    payload = edge.model_dump(mode = "json", exclude = {"srcNode", "dstNode"})
     record : Dict[str, Any] = {"kind": type(edge).kind}
     record.update(payload)
     record["srcKey"] = edge.srcNode.hashKey

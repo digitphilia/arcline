@@ -53,7 +53,7 @@ Pyomo for solving and scenario comparison.
 
 | Capability | Status | Where it lives |
 | --- | --- | --- |
-| Typed taxonomy (Supplier / Plant / Warehouse / Customer / Lane / Production / Storage) | ✅ shipped | `arcline/graph/library/` |
+| Typed taxonomy (SupplierNode / PlantNode / WarehouseNode / CustomerNode / LaneEdge / ProductionEdge / StorageEdge) | ✅ shipped | `arcline/graph/library/` |
 | Pydantic validation of every node and edge | ✅ shipped | `arcline/graph/base/` |
 | Project I/O (JSON · YAML · Parquet · CSV) | ✅ shipped | `arcline/io/` |
 | `NetworkBuilder` fluent assembly | ✅ shipped | `arcline/graph/builder.py` |
@@ -129,11 +129,78 @@ arcline dashboard ./my_network
 | --- | --- | --- |
 | **`AbstractNode`** / **`AbstractEdge`** | `arcline/graph/base/` | Pydantic v2 base classes; every concrete node/edge inherits validation, hashing, and serialization for free. Both expose `hashKey` (deterministic id), `name`, optional `latitude` / `longitude`. |
 | **`AbstractGraph`** | `arcline/graph/base/graph.py` | Storage-agnostic interface. The default backend wraps `networkx.MultiDiGraph`; an `igraph` backend is on the roadmap for >1M-edge networks. Provides `addNode`, `addEdge`, `updateNode`, `updateEdge`, cached neighbour indices, etc. |
-| **Built-in taxonomy** | `arcline/graph/library/` | Supplier · Plant · Warehouse (alias `DistributionCenter`) · Customer · Lane · Production · Storage. Each has typed attributes (e.g. `Lane.distanceKm`, `Plant.maxCapacity`) and a `kind` discriminator used for polymorphic (de)serialization. |
-| **Kind registry** | `arcline/graph/registry.py` | Maps `"supplier" → Supplier`, `"lane" → Lane`, etc. Auto-populated when `arcline.graph.library` is imported. `arcline.io` triggers this side-effect on import so the CLI just works. |
-| **`NetworkBuilder`** | `arcline/graph/builder.py` | Fluent assembly: `b.add(Supplier(...))`, `b.connect(src, dst, cls=Lane, ...)`, `b.build()`. Catches duplicate hash keys and dangling endpoints early. |
+| **Built-in taxonomy** | `arcline/graph/library/` | `SupplierNode` · `PlantNode` · `WarehouseNode` (alias `DistributionCenterNode`) · `CustomerNode` · `LaneEdge` · `ProductionEdge` · `StorageEdge`. Each has typed attributes (e.g. `LaneEdge.distanceKm`, `PlantNode.maxCapacity`), a `kind` discriminator used for polymorphic (de)serialization, and ClassVar capability flags (`canShip`, `canManufacture`, …). Categorical fields use Enums (`TransportationMode.ROAD`, `FacilityStatus.OPEN`, etc.) — see `arcline/graph/enums.py`. |
+| **Kind registry** | `arcline/graph/registry.py` | Maps `"supplier" → SupplierNode`, `"lane" → LaneEdge`, etc. Auto-populated when `arcline.graph.library` is imported. `arcline.io` triggers this side-effect on import so the CLI just works. |
+| **`NetworkBuilder`** | `arcline/graph/builder.py` | Fluent assembly: `b.add(SupplierNode(...))`, `b.connect(src, dst, cls=LaneEdge, ...)`, `b.build()`. Catches duplicate hash keys and dangling endpoints early. |
 | **`Project`** | `arcline/io/project.py` | File-based project facade. Three constructors: `Project.init` (empty), `Project.open` (load + validate), `Project.fromGraph` (persist an in-memory graph). Use `proj.toGraph()` to materialise. |
 | **`HistorySpec`** | `arcline/historian/spec.py` | Declarative mapping from a node/edge attribute to a row-set in MS-SQL. The framework synthesises a parameterised `SELECT … BETWEEN :start AND :end`; classes never write SQL by hand. |
+
+---
+
+## Taxonomy hierarchy & Enums
+
+The built-in taxonomy is a small, opinionated tree. Concrete leaves (the classes you instantiate) inherit from intermediate abstract bases that hold shared fields, so adding a new node/edge kind is usually a 5-line subclass.
+
+```
+AbstractNode
+├── SourceNode        canShip=True   canStore=False   canManufacture=False
+│   └── SupplierNode
+├── FacilityNode      canShip=True   canStore=True    canManufacture=False
+│   ├── PlantNode               canManufacture=True
+│   └── WarehouseNode           (alias: DistributionCenterNode)
+└── DemandNode        canShip=False  canStore=False   canDemand=True
+    └── CustomerNode
+
+AbstractEdge
+└── FlowEdge          carriesProduct=True   carriesInfo=False
+    ├── TransportEdge          mode, transitDays
+    │   └── LaneEdge
+    ├── ProductionEdge
+    └── StorageEdge
+```
+
+Common fields are lifted up:
+
+| Lifted to | Fields |
+| --- | --- |
+| `FacilityNode` | `minCapacity`, `maxCapacity`, `operatingCostPerHr`, `status`, `ownership`, `shift` (with `minCapacity ≤ maxCapacity` cross-field validator) |
+| `FlowEdge`     | `costPerUnit`, `capacityPerPeriod` |
+| `TransportEdge`| `mode`, `transitDays` |
+
+Every categorical attribute is an Enum from [`arcline.graph.enums`](./arcline/graph/enums.py):
+
+| Enum | Members | Used by |
+| --- | --- | --- |
+| `TransportationMode` | `ROAD`, `RAIL`, `SEA`, `AIR` | `LaneEdge.mode` |
+| `FacilityStatus` | `PLANNED`, `OPEN`, `CLOSED`, `DECOMMISSIONED` | `FacilityNode.status` |
+| `OwnershipType` | `OWNED`, `LEASED`, `THIRD_PARTY` | `FacilityNode.ownership` |
+| `OperationalShift` | `DAY`, `NIGHT`, `TWENTY_FOUR_SEVEN` | `FacilityNode.shift` |
+| `StorageType` | `AMBIENT`, `COLD_CHAIN`, `FROZEN`, `HAZMAT` | `WarehouseNode.storageType`, `StorageEdge.storageType` |
+| `CustomerSegment` | `RETAIL`, `WHOLESALE`, `B2B`, `B2C` | `CustomerNode.segment` |
+| `LaneServiceLevel` | `STANDARD`, `EXPEDITED`, `OVERNIGHT` | `LaneEdge.serviceLevel` |
+| `Currency` | `USD`, `EUR`, `GBP`, `INR`, `JPY` | declared (Phase 2) |
+| `UnitOfMeasure` | `EACH`, `CASE`, `PALLET`, `KG`, `TON`, `LITRE` | declared (Phase 2) |
+
+All enums subclass `_CamelStrEnum(str, Enum)` so they JSON-serialise as their UPPER `.name` and accept any case-variant on input — `TransportationMode("road")`, `TransportationMode("ROAD")` and `TransportationMode.ROAD` are interchangeable.
+
+Capability flags let downstream tooling avoid `isinstance()` ladders:
+
+```python
+node.supports("canManufacture")    # PlantNode -> True, WarehouseNode -> False
+edge.supports("carriesProduct")    # any FlowEdge -> True
+```
+
+The full set of public re-exports lives at the top of the package:
+
+```python
+from arcline import (
+    SupplierNode, PlantNode, WarehouseNode, DistributionCenterNode, CustomerNode,
+    LaneEdge, ProductionEdge, StorageEdge,
+    SourceNode, FacilityNode, DemandNode, FlowEdge, TransportEdge,
+    TransportationMode, FacilityStatus, OwnershipType, OperationalShift,
+    StorageType, CustomerSegment, LaneServiceLevel, Currency, UnitOfMeasure,
+)
+```
 
 ---
 
@@ -160,35 +227,41 @@ All commands accept relative or absolute paths. On any I/O error the CLI prints 
 
 ```python
 from arcline.graph.builder import NetworkBuilder
-from arcline.graph.library import Supplier, Plant, Warehouse, Customer, Lane
+from arcline.graph.library import (
+    SupplierNode, PlantNode, WarehouseNode, CustomerNode, LaneEdge,
+)
+from arcline.graph.enums import TransportationMode
 from arcline.io import Project
 
 b = NetworkBuilder()
 
-s1 = b.add(Supplier(
+s1 = b.add(SupplierNode(
     name = "Acme Steel", hashKey = "N-S1",
     latitude = 12.97, longitude = 77.59,
     leadTimeDays = 3.0, reliabilityScore = 0.95,
 ))
-p1 = b.add(Plant(
+p1 = b.add(PlantNode(
     name = "Bengaluru Plant", hashKey = "N-P1",
     productionRatePerHr = 120.0, maxCapacity = 10_000.0,
 ))
-w1 = b.add(Warehouse(
+w1 = b.add(WarehouseNode(
     name = "Whitefield DC", hashKey = "N-W1",
     maxCapacity = 25_000.0,
 ))
-c1 = b.add(Customer(
+c1 = b.add(CustomerNode(
     name = "Customer A", hashKey = "N-C1",
     demandMean = 350.0, demandStd = 45.0,
 ))
 
-b.connect(s1, p1, cls = Lane, name = "S1-P1", hashKey = "E-S1P1",
-          distanceKm = 220.0, costPerUnit = 2.5, transitDays = 1.5, mode = "road")
-b.connect(p1, w1, cls = Lane, name = "P1-W1", hashKey = "E-P1W1",
-          distanceKm =  15.0, costPerUnit = 0.4, transitDays = 0.2, mode = "road")
-b.connect(w1, c1, cls = Lane, name = "W1-C1", hashKey = "E-W1C1",
-          distanceKm =  40.0, costPerUnit = 1.1, transitDays = 0.5, mode = "road")
+b.connect(s1, p1, cls = LaneEdge, name = "S1-P1", hashKey = "E-S1P1",
+          distanceKm = 220.0, costPerUnit = 2.5, transitDays = 1.5,
+          mode = TransportationMode.ROAD)
+b.connect(p1, w1, cls = LaneEdge, name = "P1-W1", hashKey = "E-P1W1",
+          distanceKm =  15.0, costPerUnit = 0.4, transitDays = 0.2,
+          mode = TransportationMode.ROAD)
+b.connect(w1, c1, cls = LaneEdge, name = "W1-C1", hashKey = "E-W1C1",
+          distanceKm =  40.0, costPerUnit = 1.1, transitDays = 0.5,
+          mode = TransportationMode.ROAD)
 
 graph = b.build(backend = "networkx")
 
@@ -302,7 +375,7 @@ print(distribution(df, bins = 30))        # histogram bins
 
 | Path | What it shows |
 | --- | --- |
-| [`examples/toy_3node/`](./examples/toy_3node/) | Hand-curated 3-node project (Supplier → Plant → Customer). Open with `arcline dashboard examples/toy_3node`. |
+| [`examples/toy_3node/`](./examples/toy_3node/) | Hand-curated 3-node project (SupplierNode → PlantNode → CustomerNode). Open with `arcline dashboard examples/toy_3node`. |
 | [`examples/random_network.py`](./examples/random_network.py) | Parametric random 4-tier supply-chain generator. Writes a full project + bulk Parquet pair. Defaults: 6 / 4 / 3 / 8 entities, seed 42 → 21 nodes, 29 edges. |
 | [`examples/historian_schema.sql`](./examples/historian_schema.sql) | DDL for the MS-SQL fact tables that match the built-in `HistorySpec` catalog (`fact_lane_lead_time`, `fact_lane_cost`, `fact_plant_throughput`, `fact_warehouse_throughput`, `fact_customer_demand`). |
 
@@ -348,7 +421,7 @@ Phase 2 (Pyomo + solver backends) has not yet shipped. Track it on the [`CLAUDE.
 
 ## Contributing
 
-- **Naming:** strict camelCase across all Python identifiers (functions, methods, attributes, parameters, locals). Enforced by `tools/check_camel_case.py` (CI gate; 0 violations as of v0.2.0-dev). Exemptions: `def test_*`, dunders, environment variables, external library kwargs.
+- **Naming:** strict camelCase across all Python identifiers (functions, methods, attributes, parameters, locals). Enforced by `tools/check_camel_case.py` (CI gate; 0 violations). Exemptions: `def test_*`, dunders, environment variables, external library kwargs.
 - **Tests:** `pytest -q` should be green before any PR (currently **115 passed, 2 skipped** in ~9 s).
 - **Design intent:** every architectural decision lives in [`CLAUDE.md`](./CLAUDE.md) — read it before proposing structural changes.
 

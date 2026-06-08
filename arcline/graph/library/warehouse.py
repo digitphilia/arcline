@@ -4,37 +4,34 @@
 Built-in Warehouse / Distribution-Center Node Definition
 --------------------------------------------------------
 
-A :class:`Warehouse` represents an inventory-holding facility (also
+A :class:`WarehouseNode` represents an inventory-holding facility (also
 known as a Distribution Center, exposed under the alias
-:data:`DistributionCenter`).
+:data:`DistributionCenterNode`). Capacity bounds, status, ownership,
+and shift are inherited from :class:`FacilityNode`.
 """
 
 from pydantic import Field
 from typing import ClassVar, Dict, Optional
 
-from arcline.graph.base.nodes import AbstractNode
+from arcline.graph.enums import StorageType
+from arcline.graph.library._intermediates import FacilityNode
 from arcline.graph.registry import register_node
 from arcline.historian.spec import HistorySpec
 
 
-class Warehouse(AbstractNode):
+class WarehouseNode(FacilityNode):
     """
-    Concrete supply-chain node modeling an inventory-holding facility
-    bounded by minimum and maximum storage capacities.
+    Concrete supply-chain node modeling an inventory-holding facility.
 
-    :param minCapacity: Lower bound of the holding capacity.
-    :param maxCapacity: Upper bound of the holding capacity.
+    :param storageType: Climate / handling regime for stored product;
+        defaults to :attr:`StorageType.AMBIENT`.
     """
 
     kind : ClassVar[str] = "warehouse"
 
-    minCapacity : float = Field(
-        0.0, ge = 0.0, description = "Min. Capacity of the Warehouse"
-    )
-
-    maxCapacity : float = Field(
-        float("inf"), gt = 0.0,
-        description = "Max. Capacity of the Warehouse"
+    storageType : StorageType = Field(
+        default = StorageType.AMBIENT,
+        description = "Climate / Handling Regime",
     )
 
     history : ClassVar[Dict[str, HistorySpec]] = {
@@ -51,24 +48,20 @@ class Warehouse(AbstractNode):
 
     @property
     def imagePath(self) -> Optional[str]:
-        """
-        Default warehouse icon shipped with the package.
-        """
+        """Default warehouse icon shipped with the package."""
 
         return "./icons/warehouse.png"
 
 
     @property
     def nodeColor(self) -> Optional[str]:
-        """
-        Default warehouse node color in HEX.
-        """
+        """Default warehouse node color in HEX."""
 
         return "#7BC47F"
 
 
 # Distribution Center is an alias of Warehouse - shares the same kind
 # and is intentionally not registered separately.
-DistributionCenter = Warehouse
+DistributionCenterNode = WarehouseNode
 
-register_node(Warehouse)
+register_node(WarehouseNode)

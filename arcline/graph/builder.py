@@ -145,8 +145,8 @@ class NetworkBuilder:
         """
 
         if cls is None:
-            from arcline.graph.library.lane import Lane
-            cls = Lane
+            from arcline.graph.library.lane import LaneEdge
+            cls = LaneEdge
 
         srcKey = src.hashKey
         dstKey = dst.hashKey

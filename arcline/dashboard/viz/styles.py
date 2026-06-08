@@ -58,11 +58,15 @@ def __probe_edge__(kind : str):
     """
 
     try:
-        from arcline.graph.library.supplier import Supplier
+        from arcline.graph.library.supplier import SupplierNode
 
         cls = resolve_edge(kind)
-        probeSrc = Supplier(name = "_probe-src", hashKey = "_probe-src")
-        probeDst = Supplier(name = "_probe-dst", hashKey = "_probe-dst")
+        probeSrc = SupplierNode(
+            name = "_probe-src", hashKey = "_probe-src"
+        )
+        probeDst = SupplierNode(
+            name = "_probe-dst", hashKey = "_probe-dst"
+        )
         return cls(
             name = "_probe", hashKey = "_probe",
             srcNode = probeSrc, dstNode = probeDst,

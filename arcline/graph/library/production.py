@@ -4,18 +4,19 @@
 Built-in Production Edge Definition
 -----------------------------------
 
-A :class:`Production` edge models an intra-plant conversion step
-characterized by its cycle time and yield rate.
+A :class:`ProductionEdge` models an intra-plant conversion step
+characterized by its cycle time and yield rate. ``costPerUnit`` and
+``capacityPerPeriod`` are inherited from :class:`FlowEdge`.
 """
 
 from pydantic import Field
 from typing import ClassVar, Optional
 
-from arcline.graph.base.edges import AbstractEdge
+from arcline.graph.library._intermediates import FlowEdge
 from arcline.graph.registry import register_edge
 
 
-class Production(AbstractEdge):
+class ProductionEdge(FlowEdge):
     """
     Concrete supply-chain edge modeling a production / conversion arc.
 
@@ -39,11 +40,9 @@ class Production(AbstractEdge):
 
     @property
     def edgeColor(self) -> Optional[str]:
-        """
-        Default production edge color in HEX.
-        """
+        """Default production edge color in HEX."""
 
         return "#9C27B0"
 
 
-register_edge(Production)
+register_edge(ProductionEdge)
