@@ -29,6 +29,14 @@ from arcline.historian.connection import (
     disposeEngine,
     redactDsn,
 )
+from arcline.historian.cache import (
+    cacheRoot,
+    cachePath,
+    readCache,
+    writeCache,
+    clearCache,
+)
+from arcline.historian.fetcher import fetch, buildQuery
 
 __all__ = [
     "HistorianError",
@@ -45,4 +53,11 @@ __all__ = [
     "testConnection",
     "disposeEngine",
     "redactDsn",
+    "cacheRoot",
+    "cachePath",
+    "readCache",
+    "writeCache",
+    "clearCache",
+    "fetch",
+    "buildQuery",
 ]
