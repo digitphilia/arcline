@@ -77,7 +77,11 @@ Repository = "https://github.com/growthio/arcline"
 Issues = "https://github.com/growthio/arcline/issues"
 
 [tool.setuptools.packages.find]
+include = ["arcline*", "arcline_d3*"]
 exclude = ["tests*", "examples*"]
+
+[tool.setuptools.package-data]
+arcline_d3 = ["*.js"]
 
 [tool.setuptools.dynamic]
 version = {attr = "arcline.__version__"}
