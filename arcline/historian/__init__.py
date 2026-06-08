@@ -37,6 +37,7 @@ from arcline.historian.cache import (
     clearCache,
 )
 from arcline.historian.fetcher import fetch, buildQuery
+from arcline.historian.analytics import summary, rolling, distribution, resample
 
 __all__ = [
     "HistorianError",
@@ -60,4 +61,8 @@ __all__ = [
     "clearCache",
     "fetch",
     "buildQuery",
+    "summary",
+    "rolling",
+    "distribution",
+    "resample",
 ]
