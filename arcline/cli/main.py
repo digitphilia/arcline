@@ -11,6 +11,7 @@ Wires the three Phase 1 subcommands (``init``, ``validate``,
 import typer
 
 from arcline.cli.commands import dashboard, init, validate
+from arcline.cli.history import history as historyApp
 
 
 app = typer.Typer(
@@ -23,6 +24,7 @@ app = typer.Typer(
 app.command(name = "init")(init)
 app.command(name = "validate")(validate)
 app.command(name = "dashboard")(dashboard)
+app.add_typer(historyApp, name = "history")
 
 
 if __name__ == "__main__":
