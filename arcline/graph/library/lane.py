@@ -10,10 +10,11 @@ core attributes that drive flow / cost optimization on the lane.
 """
 
 from pydantic import Field
-from typing import ClassVar, Literal, Optional
+from typing import ClassVar, Dict, Literal, Optional
 
 from arcline.graph.base.edges import AbstractEdge
 from arcline.graph.registry import register_edge
+from arcline.historian.spec import HistorySpec
 
 
 class Lane(AbstractEdge):
@@ -44,6 +45,26 @@ class Lane(AbstractEdge):
     mode : Literal["road", "rail", "sea", "air"] = Field(
         "road", description = "Transportation Mode"
     )
+
+    history : ClassVar[Dict[str, HistorySpec]] = {
+        "transitDays": HistorySpec(
+            table = "fact_lane_lead_time",
+            schema = "dwh",
+            keyColumn = "edge_hash_key",
+            valueColumn = "actual_lead_time_days",
+            tsColumn = "shipment_date",
+            filters = {"is_active": 1},
+            description = "Realized lead time per shipment, daily grain.",
+        ),
+        "costPerUnit": HistorySpec(
+            table = "fact_lane_cost",
+            schema = "dwh",
+            keyColumn = "edge_hash_key",
+            valueColumn = "unit_cost",
+            tsColumn = "invoice_date",
+            description = "Realized unit cost per invoiced shipment.",
+        ),
+    }
 
 
     @property

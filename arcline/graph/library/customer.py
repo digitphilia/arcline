@@ -9,10 +9,11 @@ by the mean and standard deviation of its demand distribution.
 """
 
 from pydantic import Field
-from typing import ClassVar, Optional
+from typing import ClassVar, Dict, Optional
 
 from arcline.graph.base.nodes import AbstractNode
 from arcline.graph.registry import register_node
+from arcline.historian.spec import HistorySpec
 
 
 class Customer(AbstractNode):
@@ -34,6 +35,17 @@ class Customer(AbstractNode):
         0.0, ge = 0.0,
         description = "Standard Deviation of the Demand Distribution"
     )
+
+    history : ClassVar[Dict[str, HistorySpec]] = {
+        "demandMean": HistorySpec(
+            table = "fact_customer_demand",
+            schema = "dwh",
+            keyColumn = "node_hash_key",
+            valueColumn = "units_ordered",
+            tsColumn = "order_date",
+            description = "Realized order quantity per order date.",
+        ),
+    }
 
 
     @property

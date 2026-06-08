@@ -38,6 +38,7 @@ from arcline.historian.cache import (
 )
 from arcline.historian.fetcher import fetch, buildQuery
 from arcline.historian.analytics import summary, rolling, distribution, resample
+from arcline.historian.registry import specFor, attributesFor, iterCatalog
 
 __all__ = [
     "HistorianError",
@@ -65,4 +66,7 @@ __all__ = [
     "rolling",
     "distribution",
     "resample",
+    "specFor",
+    "attributesFor",
+    "iterCatalog",
 ]

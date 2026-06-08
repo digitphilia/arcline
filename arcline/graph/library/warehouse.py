@@ -10,10 +10,11 @@ known as a Distribution Center, exposed under the alias
 """
 
 from pydantic import Field
-from typing import ClassVar, Optional
+from typing import ClassVar, Dict, Optional
 
 from arcline.graph.base.nodes import AbstractNode
 from arcline.graph.registry import register_node
+from arcline.historian.spec import HistorySpec
 
 
 class Warehouse(AbstractNode):
@@ -35,6 +36,17 @@ class Warehouse(AbstractNode):
         float("inf"), gt = 0.0,
         description = "Max. Capacity of the Warehouse"
     )
+
+    history : ClassVar[Dict[str, HistorySpec]] = {
+        "maxCapacity": HistorySpec(
+            table = "fact_warehouse_throughput",
+            schema = "dwh",
+            keyColumn = "node_hash_key",
+            valueColumn = "units_handled",
+            tsColumn = "activity_date",
+            description = "Daily throughput observed at the warehouse.",
+        ),
+    }
 
 
     @property

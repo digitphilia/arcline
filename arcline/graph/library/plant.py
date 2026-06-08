@@ -10,10 +10,11 @@ maximum throughput capacities.
 """
 
 from pydantic import Field
-from typing import ClassVar, Optional
+from typing import ClassVar, Dict, Optional
 
 from arcline.graph.base.nodes import AbstractNode
 from arcline.graph.registry import register_node
+from arcline.historian.spec import HistorySpec
 
 
 class Plant(AbstractNode):
@@ -40,6 +41,17 @@ class Plant(AbstractNode):
         float("inf"), gt = 0.0,
         description = "Max. Capacity of the Plant"
     )
+
+    history : ClassVar[Dict[str, HistorySpec]] = {
+        "productionRatePerHr": HistorySpec(
+            table = "fact_plant_throughput",
+            schema = "dwh",
+            keyColumn = "node_hash_key",
+            valueColumn = "units_per_hour",
+            tsColumn = "production_date",
+            description = "Realized hourly throughput per production day.",
+        ),
+    }
 
 
     @property
