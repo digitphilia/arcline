@@ -10,6 +10,7 @@ import pytest
 from pydantic import BaseModel
 
 from arcline.graph.enums import (
+    Currency,
     CustomerSegment,
     FacilityStatus,
     LaneServiceLevel,
@@ -17,6 +18,7 @@ from arcline.graph.enums import (
     OwnershipType,
     StorageType,
     TransportationMode,
+    UnitOfMeasure,
 )
 
 
@@ -85,10 +87,83 @@ def test_allEnumsExportCanonicalNames() -> None:
     for enumCls in (
         TransportationMode, FacilityStatus, OwnershipType,
         OperationalShift, StorageType, CustomerSegment,
-        LaneServiceLevel,
+        LaneServiceLevel, Currency, UnitOfMeasure,
     ):
         for member in enumCls:
             assert member.name == member.value, (
                 f"{enumCls.__name__}.{member.name} "
                 f"value {member.value!r} != name"
             )
+
+
+# ---------- str subclass semantics --------------------------------------------
+
+
+def test_enumIsStringSubclass() -> None:
+    """
+    ``_CamelStrEnum`` derives from ``str``, so members must compare
+    equal to their canonical string value and behave as strings in
+    formatting / serialisation contexts.
+    """
+
+    assert isinstance(TransportationMode.ROAD, str)
+    assert TransportationMode.ROAD == "ROAD"
+    assert StorageType.COLD_CHAIN == "COLD_CHAIN"
+    assert f"{TransportationMode.AIR}" == "TransportationMode.AIR"
+    assert TransportationMode.AIR.value == "AIR"
+
+
+def test_enumHashableInSetsAndDicts() -> None:
+    """
+    Members must hash to the same bucket as their string value so they
+    can be used safely as set members and dict keys (e.g. style maps).
+    """
+
+    bucket = {
+        TransportationMode.ROAD, TransportationMode.ROAD,
+        TransportationMode.RAIL,
+    }
+    assert len(bucket) == 2
+
+    palette : dict = {
+        TransportationMode.ROAD: "#1f77b4",
+        TransportationMode.RAIL: "#ff7f0e",
+    }
+    assert palette[TransportationMode.ROAD] == "#1f77b4"
+
+
+# ---------- pydantic round-trip across the full enum catalogue ----------------
+
+
+@pytest.mark.parametrize(
+    "enumCls,member",
+    [
+        (TransportationMode,  TransportationMode.SEA),
+        (FacilityStatus,      FacilityStatus.CLOSED),
+        (OwnershipType,       OwnershipType.THIRD_PARTY),
+        (OperationalShift,    OperationalShift.TWENTY_FOUR_SEVEN),
+        (StorageType,         StorageType.COLD_CHAIN),
+        (CustomerSegment,     CustomerSegment.WHOLESALE),
+        (LaneServiceLevel,    LaneServiceLevel.EXPEDITED),
+        (Currency,            Currency.INR),
+        (UnitOfMeasure,       UnitOfMeasure.PALLET),
+    ],
+)
+def test_allEnumsRoundTripThroughPydantic(
+    enumCls : type, member,
+) -> None:
+    """
+    Every enum in the catalogue must serialise to its canonical UPPER
+    name through ``model_dump(mode="json")`` and deserialise back to
+    the same member through ``model_validate_json``.
+    """
+
+    class _M(BaseModel):
+        value : enumCls
+
+    payload = _M(value = member)
+    serialised = payload.model_dump(mode = "json")
+    assert serialised == {"value": member.name}
+
+    rebuilt = _M.model_validate_json(payload.model_dump_json())
+    assert rebuilt.value is member

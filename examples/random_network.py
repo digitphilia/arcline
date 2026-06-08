@@ -46,12 +46,11 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
+from arcline import (
+    CustomerNode, LaneEdge, PlantNode, SupplierNode,
+    TransportationMode, WarehouseNode,
+)
 from arcline.graph.builder import NetworkBuilder
-from arcline.graph.library.customer import CustomerNode
-from arcline.graph.library.lane import LaneEdge
-from arcline.graph.library.plant import PlantNode
-from arcline.graph.library.supplier import SupplierNode
-from arcline.graph.library.warehouse import WarehouseNode
 from arcline.io import Project, toParquet
 
 
@@ -139,7 +138,12 @@ def _buildCustomers(builder : NetworkBuilder, count : int,
     return out
 
 
-_MODES : Tuple[str, ...] = ("road", "rail", "sea", "air")
+_MODES : Tuple[TransportationMode, ...] = (
+    TransportationMode.ROAD,
+    TransportationMode.RAIL,
+    TransportationMode.SEA,
+    TransportationMode.AIR,
+)
 
 
 def _connectTier(builder : NetworkBuilder, upstream : List, downstream : List,

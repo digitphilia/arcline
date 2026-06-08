@@ -23,7 +23,7 @@ the leaf concrete classes call :func:`register_node` /
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from pydantic import Field, model_validator
 
@@ -91,9 +91,9 @@ class FacilityNode(AbstractNode):
         description = "Min. Operational Capacity",
     )
 
-    maxCapacity : float = Field(
-        float("inf"), gt = 0.0,
-        description = "Max. Operational Capacity",
+    maxCapacity : Optional[float] = Field(
+        None, gt = 0.0,
+        description = "Max. Operational Capacity (None = unconstrained)",
     )
 
     operatingCostPerHr : float = Field(
@@ -124,7 +124,10 @@ class FacilityNode(AbstractNode):
         subclass so the rule lives in exactly one place.
         """
 
-        if self.minCapacity > self.maxCapacity:
+        if (
+            self.maxCapacity is not None
+            and self.minCapacity > self.maxCapacity
+        ):
             raise ValueError(
                 f"minCapacity ({self.minCapacity}) must be "
                 f"<= maxCapacity ({self.maxCapacity}) on "
@@ -151,9 +154,9 @@ class FlowEdge(AbstractEdge):
         description = "Variable Unit Cost on the Edge",
     )
 
-    capacityPerPeriod : float = Field(
-        float("inf"), gt = 0.0,
-        description = "Upper Bound on Units per Period",
+    capacityPerPeriod : Optional[float] = Field(
+        None, gt = 0.0,
+        description = "Upper Bound on Units per Period (None = unbounded)",
     )
 
 

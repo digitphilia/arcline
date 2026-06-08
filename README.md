@@ -163,8 +163,8 @@ Common fields are lifted up:
 
 | Lifted to | Fields |
 | --- | --- |
-| `FacilityNode` | `minCapacity`, `maxCapacity`, `operatingCostPerHr`, `status`, `ownership`, `shift` (with `minCapacity ≤ maxCapacity` cross-field validator) |
-| `FlowEdge`     | `costPerUnit`, `capacityPerPeriod` |
+| `FacilityNode` | `minCapacity`, `maxCapacity` (Optional — `None` = unconstrained), `operatingCostPerHr`, `status`, `ownership`, `shift` (with `minCapacity ≤ maxCapacity` cross-field validator) |
+| `FlowEdge`     | `costPerUnit`, `capacityPerPeriod` (Optional — `None` = unbounded) |
 | `TransportEdge`| `mode`, `transitDays` |
 
 Every categorical attribute is an Enum from [`arcline.graph.enums`](./arcline/graph/enums.py):
@@ -376,7 +376,9 @@ print(distribution(df, bins = 30))        # histogram bins
 | Path | What it shows |
 | --- | --- |
 | [`examples/toy_3node/`](./examples/toy_3node/) | Hand-curated 3-node project (SupplierNode → PlantNode → CustomerNode). Open with `arcline dashboard examples/toy_3node`. |
+| [`examples/full_taxonomy_demo.py`](./examples/full_taxonomy_demo.py) | One-file showcase that exercises **every** built-in node and edge class plus every Enum. Prints a capability matrix and writes a 4-node / 5-edge project. Run `python examples/full_taxonomy_demo.py --output ./showcase`. |
 | [`examples/random_network.py`](./examples/random_network.py) | Parametric random 4-tier supply-chain generator. Writes a full project + bulk Parquet pair. Defaults: 6 / 4 / 3 / 8 entities, seed 42 → 21 nodes, 29 edges. |
+| [`examples/networkx_supply_chain.py`](./examples/networkx_supply_chain.py) | Low-level walkthrough of the `AbstractNode` / `AbstractEdge` surface for users who want to extend the framework with their own classes (rather than use the shipped taxonomy). |
 | [`examples/historian_schema.sql`](./examples/historian_schema.sql) | DDL for the MS-SQL fact tables that match the built-in `HistorySpec` catalog (`fact_lane_lead_time`, `fact_lane_cost`, `fact_plant_throughput`, `fact_warehouse_throughput`, `fact_customer_demand`). |
 
 ---

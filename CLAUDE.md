@@ -369,9 +369,11 @@ AbstractEdge
 ```
 
 Common fields are lifted to the intermediates:
-- `FacilityNode`: `minCapacity`, `maxCapacity`, `operatingCostPerHr`, `status`, `ownership`, `shift` (+ `@model_validator` for `minCapacity ≤ maxCapacity`).
-- `FlowEdge`: `costPerUnit`, `capacityPerPeriod`.
+- `FacilityNode`: `minCapacity`, `maxCapacity` (`Optional[float]`, `None` = unconstrained), `operatingCostPerHr`, `status`, `ownership`, `shift` (+ `@model_validator` for `minCapacity ≤ maxCapacity`, skipped when `maxCapacity is None`).
+- `FlowEdge`: `costPerUnit`, `capacityPerPeriod` (`Optional[float]`, `None` = unbounded).
 - `TransportEdge`: `mode`, `transitDays`.
+
+> **JSON / Parquet hardening.** Optional capacity fields default to ``None`` (not ``math.inf``) so the writers can emit strictly-compliant JSON (``json.dump(..., allow_nan=False)``). A defence-in-depth ``_sanitiseFloats`` helper in ``arcline/io/writers.py`` additionally rewrites any non-finite float that slips through to ``None`` before serialisation, preventing the non-standard ``Infinity`` / ``NaN`` tokens from ever reaching disk.
 
 ### 5.5.2 Enum catalogue (`arcline/graph/enums.py`)
 
@@ -409,9 +411,10 @@ from arcline import (
 
 ### 5.5.5 Acceptance evidence
 
-- `pytest -q` → **154 passed** (12 enum + 17 hierarchy tests in addition to the Phase 1 + 1.5 baseline).
+- `pytest -q` → **170 passed** (12 enum + 23 hierarchy / round-trip / hardening tests added on top of the Phase 1 + 1.5 baseline).
 - `tools/check_camel_case.py` → rc=0.
 - Public API: `from arcline import PlantNode, TransportationMode` resolves.
+- `examples/full_taxonomy_demo.py` runs end-to-end; saved JSON contains zero ``Infinity``/``NaN`` tokens; `json.loads(..., allow_nan=False)` accepts the output.
 
 ---
 

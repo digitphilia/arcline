@@ -14,6 +14,7 @@ envelope while Parquet uses one file per artifact.
 """
 
 import json
+import math
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -21,6 +22,26 @@ import yaml
 
 from arcline.graph.base.edges import AbstractEdge
 from arcline.graph.base.nodes import AbstractNode
+
+
+def _sanitiseFloats(value : Any) -> Any:
+    """
+    Recursively walk ``value`` and replace any non-finite float
+    (``inf``, ``-inf``, ``nan``) with ``None`` so the resulting
+    structure is JSON-compliant under ``allow_nan=False`` and round-
+    trips cleanly through strict downstream consumers (browsers,
+    ``jq``, BigQuery, etc.). Pydantic field defaults of ``math.inf``
+    (e.g. ``capacityPerPeriod``) would otherwise be emitted as the
+    non-standard token ``Infinity``.
+    """
+
+    if isinstance(value, float):
+        return None if not math.isfinite(value) else value
+    if isinstance(value, dict):
+        return {k: _sanitiseFloats(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_sanitiseFloats(v) for v in value]
+    return value
 
 
 def __nodeRecord__(node : AbstractNode) -> Dict[str, Any]:
@@ -36,7 +57,7 @@ def __nodeRecord__(node : AbstractNode) -> Dict[str, Any]:
         export.
     """
 
-    payload = node.model_dump(mode = "json")
+    payload = _sanitiseFloats(node.model_dump(mode = "json"))
     record : Dict[str, Any] = {"kind": type(node).kind}
     record.update(payload)
     return record
@@ -54,7 +75,9 @@ def __edgeRecord__(edge : AbstractEdge) -> Dict[str, Any]:
     :returns: A flat dictionary suitable for export.
     """
 
-    payload = edge.model_dump(mode = "json", exclude = {"srcNode", "dstNode"})
+    payload = _sanitiseFloats(
+        edge.model_dump(mode = "json", exclude = {"srcNode", "dstNode"})
+    )
     record : Dict[str, Any] = {"kind": type(edge).kind}
     record.update(payload)
     record["srcKey"] = edge.srcNode.hashKey
@@ -116,7 +139,7 @@ def toJsonRecords(
     with Path(path).open("w", encoding = "utf-8") as fp:
         json.dump(
             records, fp, indent = indent or None,
-            ensure_ascii = False, default = str,
+            ensure_ascii = False, default = str, allow_nan = False,
         )
 
 
@@ -158,7 +181,7 @@ def toJson(
     with Path(path).open("w", encoding = "utf-8") as fp:
         json.dump(
             payload, fp, indent = indent or None,
-            ensure_ascii = False, default = str,
+            ensure_ascii = False, default = str, allow_nan = False,
         )
 
 

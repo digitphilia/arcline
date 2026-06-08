@@ -7,10 +7,9 @@ Phase 1.5 - P15-5 (built-in catalog) tests.
 from __future__ import annotations
 
 from arcline.historian import HistorySpec, specFor, attributesFor, iterCatalog
-from arcline.graph.library.lane import LaneEdge
-from arcline.graph.library.plant import PlantNode
-from arcline.graph.library.warehouse import WarehouseNode
-from arcline.graph.library.customer import CustomerNode
+from arcline.graph.library import (
+    CustomerNode, LaneEdge, PlantNode, WarehouseNode,
+)
 
 
 def test_lane_hasTransitDaysAndCostHistory():

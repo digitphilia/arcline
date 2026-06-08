@@ -25,7 +25,7 @@ class StorageEdge(FlowEdge):
     :param holdingCostPerUnit: Per-unit holding cost charged while
         the inventory remains in storage.
     :param maxHoldDays: Maximum number of days the inventory may be
-        held; defaults to no limit (``inf``).
+        held; defaults to ``None`` (no upper limit).
     :param storageType: Climate / handling regime for stored product;
         defaults to :attr:`StorageType.AMBIENT`.
     """
@@ -36,9 +36,9 @@ class StorageEdge(FlowEdge):
         0.0, ge = 0.0, description = "Per-Unit Holding Cost"
     )
 
-    maxHoldDays : float = Field(
-        float("inf"), gt = 0.0,
-        description = "Maximum Hold Duration in Days"
+    maxHoldDays : Optional[float] = Field(
+        None, gt = 0.0,
+        description = "Maximum Hold Duration in Days (None = unbounded)"
     )
 
     storageType : StorageType = Field(
