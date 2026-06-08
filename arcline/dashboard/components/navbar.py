@@ -98,7 +98,7 @@ def makeNavbar(projectName : str = "(no project)") -> dbc.NavbarSimple:
     return dbc.NavbarSimple(
         children = links,
         brand = f"arcline | {projectName}",
-        brandHref = "/",
+        brand_href = "/",
         color = "primary",
         dark = True,
         fluid = True,

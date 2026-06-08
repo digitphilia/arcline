@@ -80,7 +80,7 @@ def __tiered_layout__(
         )
 
     positions = networkx.multipartite_layout(
-        subGraph, subsetKey = "subset"
+        subGraph, subset_key = "subset"
     )
     return {
         str(key): (float(pos[0]), float(pos[1]))

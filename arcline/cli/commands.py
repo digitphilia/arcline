@@ -78,14 +78,28 @@ def validate(
     try:
         proj = Project.open(path)
     except FileNotFoundError as exc:
+        resolved = Path(path).resolve()
+        if not resolved.exists():
+            hint = (
+                f"Directory does not exist. Did you mean to run "
+                f"`arcline init {path}` first?"
+            )
+        elif not (resolved / "manifest.yaml").exists():
+            hint = (
+                f"Directory exists but is missing manifest.yaml; "
+                f"this does not look like an arcline project."
+            )
+        else:
+            hint = str(exc)
         typer.secho(
-            f"Project not found at {path}: {exc}",
+            f"Project not found at {path} (resolved: {resolved}).\n"
+            f"{hint}",
             fg = typer.colors.RED, err = True,
         )
         raise typer.Exit(code = 1)
     except ValueError as exc:
         typer.secho(
-            f"Project at {path} failed to load: {exc}",
+            f"Project at {Path(path).resolve()} failed to load: {exc}",
             fg = typer.colors.RED, err = True,
         )
         raise typer.Exit(code = 1)
@@ -177,8 +191,34 @@ def dashboard(
     try:
         run(path, host = host, port = port, debug = debug)
     except FileNotFoundError as exc:
+        resolved = Path(path).resolve()
+        if not resolved.exists():
+            hint = (
+                f"Directory does not exist. Either pass a different "
+                f"path, or generate one first:\n"
+                f"  arcline init {path}\n"
+                f"  # or, for a random demo network:\n"
+                f"  python examples/random_network.py --output {path}"
+            )
+        elif not (resolved / "manifest.yaml").exists():
+            hint = (
+                f"Directory exists but is not an arcline project "
+                f"(no manifest.yaml). Either initialise it:\n"
+                f"  arcline init {path}\n"
+                f"or point at a directory that already contains a "
+                f"manifest.yaml + nodes.json + edges.json."
+            )
+        else:
+            hint = str(exc)
         typer.secho(
-            f"Project not found at {path}: {exc}",
+            f"Project not found at {path} (resolved: {resolved}).\n"
+            f"{hint}",
+            fg = typer.colors.RED, err = True,
+        )
+        raise typer.Exit(code = 1)
+    except ValueError as exc:
+        typer.secho(
+            f"Project at {Path(path).resolve()} failed to load: {exc}",
             fg = typer.colors.RED, err = True,
         )
         raise typer.Exit(code = 1)
