@@ -481,6 +481,7 @@ A new dedicated page (registered via Dash multi-page registry) sitting alongside
 | **Packaging**        | `pyproject.toml` already in place; add optional extras: `[dashboard]`, `[igraph]`, `[gurobi]`, `[cplex]`. |
 | **Security**         | Dashboard MVP is **localhost-only**; no auth. A future `[server]` extra adds `flask-login` + RBAC.      |
 | **Versioning**       | SemVer; manifest stores `arcline_schema_version` for forward-compatible migrations under `arcline.io.migrations`. |
+| **Naming convention**| **Strict camelCase EVERYWHERE** — functions, methods, parameters, locals, pydantic attrs. Exempt: PascalCase classes, dunders, `test_*` test functions, externally-mandated kwargs (Dash / Pydantic / Typer / networkx / pandas / SQLAlchemy), env vars (`UPPER_SNAKE`). Enforced by `tools/check_camel_case.py` (pre-commit + CI). Legacy `arcline/graph/registry.py` and intentional deprecation shims in `arcline/io/__init__.py` / `arcline/utils/__init__.py` are grandfathered. |
 
 ### Proposed dependency additions (to `pyproject.toml`)
 
